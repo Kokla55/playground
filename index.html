@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XRP Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --xrp: #00C6FF;
+    --xrp2: #0072FF;
+    --green: #00E5A0;
+    --red: #FF4D6A;
+    --amber: #FFB830;
+    --text: #F0F2F8;
+    --muted: #6B7280;
+    --muted2: #9CA3AF;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,198,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,198,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse, rgba(0,114,255,0.12) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .wrapper {
+    position: relative; z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--xrp), var(--xrp2));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px rgba(0,198,255,0.3);
+  }
+  .logo-icon svg { width: 22px; height: 22px; }
+  .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--xrp); }
+  .header-right { text-align: right; }
+  .last-updated { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .dot-live {
+    display: inline-block; width: 6px; height: 6px;
+    background: var(--green); border-radius: 50%; margin-right: 5px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .refresh-btn {
+    margin-top: 8px;
+    font-family: var(--font-mono); font-size: 11px;
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--xrp); border-radius: 6px; padding: 5px 12px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .refresh-btn:hover { background: rgba(0,198,255,0.08); }
+  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .accent-line {
+    height: 2px;
+    background: linear-gradient(90deg, var(--xrp), var(--xrp2), transparent);
+    border-radius: 2px; margin-bottom: 32px;
+  }
+  .section-heading {
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-heading::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* Loading overlay */
+  #loadingOverlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; gap: 16px;
+  }
+  .spinner {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid var(--border2);
+    border-top-color: var(--xrp);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loadingOverlay p { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  /* Error banner */
+  #errorBanner {
+    display: none;
+    background: rgba(255,77,106,0.1); border: 1px solid rgba(255,77,106,0.3);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--red);
+  }
+
+  /* Price hero */
+  .price-hero {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;
+  }
+  @media (max-width: 640px) { .price-hero { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+  .price-big {
+    font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 10px;
+  }
+  .price-changes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .change-pill {
+    font-family: var(--font-mono); font-size: 12px;
+    padding: 4px 10px; border-radius: 6px; font-weight: 700;
+  }
+  .change-pill.down { background: rgba(255,77,106,0.15); color: var(--red); }
+  .change-pill.up { background: rgba(0,229,160,0.15); color: var(--green); }
+  .change-pill.neutral { background: rgba(255,255,255,0.07); color: var(--muted2); }
+  .change-pill .period { font-weight: 400; opacity: 0.7; margin-right: 4px; }
+
+  /* Portfolio */
+  .portfolio-input-row { display: flex; gap: 12px; align-items: flex-end; margin-top: 12px; }
+  .input-group { flex: 1; }
+  .input-group label { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 6px; }
+  .input-group input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 16px; color: var(--text);
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-group input:focus { border-color: var(--xrp); box-shadow: 0 0 0 3px rgba(0,198,255,0.1); }
+  .input-group input::placeholder { color: var(--muted); }
+  .portfolio-values { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .val-block { background: var(--surface2); border-radius: 10px; padding: 14px 16px; }
+  .val-block .val-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 4px; }
+  .val-block .val-num { font-size: 20px; font-weight: 700; }
+  .val-block .val-num.usd { color: var(--xrp); }
+  .val-block .val-num.nok { color: var(--amber); }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .stat-card .s-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-card .s-val { font-size: 17px; font-weight: 700; }
+  .stat-card .s-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Chart */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .chart-title { font-size: 15px; font-weight: 700; }
+  .range-tabs { display: flex; gap: 4px; background: var(--surface2); padding: 4px; border-radius: 8px; }
+  .range-tab { font-family: var(--font-mono); font-size: 11px; padding: 5px 10px; border-radius: 5px; border: none; background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .range-tab.active { background: var(--surface); color: var(--xrp); border: 1px solid var(--border2); }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* News */
+  .news-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 640px) { .news-grid { grid-template-columns: 1fr; } }
+  .news-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; transition: border-color 0.2s, transform 0.15s; display: block; color: inherit; text-decoration: none; }
+  .news-card:hover { border-color: rgba(0,198,255,0.3); transform: translateY(-2px); }
+  .news-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; margin-bottom: 10px; display: inline-block; }
+  .news-tag.bearish { background: rgba(255,77,106,0.15); color: var(--red); }
+  .news-tag.bullish { background: rgba(0,229,160,0.15); color: var(--green); }
+  .news-tag.neutral { background: rgba(255,184,48,0.15); color: var(--amber); }
+  .news-tag.tech { background: rgba(0,198,255,0.12); color: var(--xrp); }
+  .news-title { font-size: 14px; font-weight: 700; line-height: 1.4; margin-bottom: 6px; }
+  .news-desc { font-size: 12px; color: var(--muted2); line-height: 1.5; }
+  .news-date { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 10px; }
+
+  /* Facts */
+  .facts-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+  .facts-title { font-size: 15px; font-weight: 700; margin-bottom: 18px; color: var(--xrp); }
+  .facts-list { display: flex; flex-direction: column; gap: 12px; }
+  .fact-row { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .fact-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .fact-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .fact-text .fact-head { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .fact-text .fact-body { font-size: 12px; color: var(--muted2); line-height: 1.5; }
+
+  footer { text-align: center; padding-top: 32px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  footer a { color: var(--xrp); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="logo-icon" style="width:50px;height:50px;margin-bottom:8px">
+    <svg viewBox="0 0 32 32" fill="white" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2zm5.6 8l-3.6 3.6a2.83 2.83 0 0 1-4 0L10.4 10h2.83l2.18 2.18a.94.94 0 0 0 1.18 0L18.77 10H21.6zm0 12h-2.83l-2.18-2.18a.94.94 0 0 0-1.18 0L13.23 22H10.4l3.6-3.6a2.83 2.83 0 0 1 4 0L21.6 22z"/>
+    </svg>
+  </div>
+  <div class="spinner"></div>
+  <p>Henter live XRP-data...</p>
+</div>
+
+<div class="wrapper" id="mainContent" style="display:none">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 32 32" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2zm5.6 8l-3.6 3.6a2.83 2.83 0 0 1-4 0L10.4 10h2.83l2.18 2.18a.94.94 0 0 0 1.18 0L18.77 10H21.6zm0 12h-2.83l-2.18-2.18a.94.94 0 0 0-1.18 0L13.23 22H10.4l3.6-3.6a2.83 2.83 0 0 1 4 0L21.6 22z"/>
+        </svg>
+      </div>
+      <div class="logo-text"><span>XRP</span> Dashboard</div>
+    </div>
+    <div class="header-right">
+      <div class="last-updated"><span class="dot-live"></span>Live data — CoinGecko</div>
+      <div class="last-updated" id="updateTime" style="margin-top:3px"></div>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">↻ Oppdater</button>
+    </div>
+  </header>
+
+  <div class="accent-line"></div>
+  <div id="errorBanner"></div>
+
+  <div class="section-heading">Pris &amp; beholdning</div>
+  <div class="price-hero">
+    <div class="card">
+      <div class="card-label">XRP / USD — Live pris</div>
+      <div class="price-big" id="mainPrice">—</div>
+      <div class="price-changes" id="priceChanges"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Min beholdning</div>
+      <div class="portfolio-input-row">
+        <div class="input-group">
+          <label>Antall XRP</label>
+          <input type="number" id="xrpInput" placeholder="f.eks. 500" min="0" step="any" oninput="calcPortfolio()">
+        </div>
+        <div class="input-group">
+          <label>Kjøpspris (USD)</label>
+          <input type="number" id="buyPrice" placeholder="f.eks. 2.00" min="0" step="any" oninput="calcPortfolio()">
+        </div>
+      </div>
+      <div class="portfolio-values">
+        <div class="val-block"><div class="val-label">Verdi USD</div><div class="val-num usd" id="valUSD">—</div></div>
+        <div class="val-block"><div class="val-label">Verdi NOK</div><div class="val-num nok" id="valNOK">—</div></div>
+        <div class="val-block"><div class="val-label">Gevinst / tap</div><div class="val-num" id="gainLoss" style="color:var(--muted)">—</div></div>
+        <div class="val-block"><div class="val-label">Endring %</div><div class="val-num" id="gainPct" style="color:var(--muted)">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="s-label">Markedsverdi</div><div class="s-val" id="sMktCap">—</div><div class="s-sub" id="sMktRank">—</div></div>
+    <div class="stat-card"><div class="s-label">Volum 24t</div><div class="s-val" id="sVol">—</div><div class="s-sub">USD</div></div>
+    <div class="stat-card"><div class="s-label">All-time high</div><div class="s-val" id="sAth">—</div><div class="s-sub" id="sAthDate">—</div></div>
+    <div class="stat-card"><div class="s-label">Sirkulerende</div><div class="s-val" id="sSupply">—</div><div class="s-sub">av 100B maks</div></div>
+  </div>
+
+  <div class="section-heading">Prishistorikk</div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">XRP / USD</div>
+      <div class="range-tabs">
+        <button class="range-tab" onclick="loadChart(7,this)">7D</button>
+        <button class="range-tab active" onclick="loadChart(30,this)">1M</button>
+        <button class="range-tab" onclick="loadChart(90,this)">3M</button>
+        <button class="range-tab" onclick="loadChart(365,this)">1Å</button>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="priceChart" role="img" aria-label="XRP prishistorikk"></canvas></div>
+  </div>
+
+  <div class="section-heading">Siste nyheter</div>
+  <div class="news-grid">
+    <div class="news-card">
+      <span class="news-tag bearish">Bearish</span>
+      <div class="news-title">Goldman Sachs selger XRP og Solana</div>
+      <div class="news-desc">Solgte alle XRP og Solana ETF-posisjoner i Q1 2026, og kuttet Ethereum-eksponeringen med 70%.</div>
+      <div class="news-date">Mai 2026</div>
+    </div>
+    <div class="news-card">
+      <span class="news-tag bullish">Bullish</span>
+      <div class="news-title">Crypto Clarity Act gir kortvarig løft</div>
+      <div class="news-desc">XRP +5% etter at Senatet fremmet lovforslag om markedsstruktur. Kan tiltrekke institusjonelt kapital.</div>
+      <div class="news-date">Mai 2026</div>
+    </div>
+    <div class="news-card">
+      <span class="news-tag tech">Teknologi</span>
+      <div class="news-title">EVM-kompatibel sidechain lansert</div>
+      <div class="news-desc">Gjør det mulig å kjøre Solidity-apper på XRPL med XRP som gassbetaling via Axelar.</div>
+      <div class="news-date">Juni 2025</div>
+    </div>
+    <div class="news-card">
+      <span class="news-tag bearish">Bearish</span>
+      <div class="news-title">Krypto-long-posisjoner taper $500M</div>
+      <div class="news-desc">Likvidasjonskaskade flushet leverage, med Bitcoin til $78k og XRP ned 5% i én økt.</div>
+      <div class="news-date">Apr 2026</div>
+    </div>
+  </div>
+
+  <div class="section-heading">Hva er XRP?</div>
+  <div class="facts-card">
+    <div class="facts-title">Nøkkelfakta</div>
+    <div class="facts-list">
+      <div class="fact-row">
+        <div class="fact-icon">🌐</div>
+        <div class="fact-text">
+          <div class="fact-head">Hva er XRP?</div>
+          <div class="fact-body">XRP er den native kryptovalutaen til XRP Ledger (XRPL), lansert i 2012. Brukes primært til rask og billig grensekryssende betaling mellom banker og finansinstitusjoner.</div>
+        </div>
+      </div>
+      <div class="fact-row">
+        <div class="fact-icon">⚡</div>
+        <div class="fact-text">
+          <div class="fact-head">Hastighet og kostnad</div>
+          <div class="fact-body">Transaksjoner bekreftes på 3–5 sekunder og koster bare $0.0002. XRPL håndterer ~1 500 transaksjoner per sekund.</div>
+        </div>
+      </div>
+      <div class="fact-row">
+        <div class="fact-icon">🏦</div>
+        <div class="fact-text">
+          <div class="fact-head">Ripple Labs</div>
+          <div class="fact-body">Ripple Labs skapte XRP og holder fortsatt en stor del av tilbudet. Selskapet bruker XRP i sitt RippleNet-betalingssystem.</div>
+        </div>
+      </div>
+      <div class="fact-row">
+        <div class="fact-icon">⚠️</div>
+        <div class="fact-text">
+          <div class="fact-head">Risiko</div>
+          <div class="fact-body">XRP er svært volatilt — realisert volatilitet på 100–130% per kvartal. Prisen påvirkes av markedssentiment, regulering og Bitcoins bevegelser. Invester aldri mer enn du tåler å tape.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Live prisdata fra <a href="https://www.coingecko.com" target="_blank">CoinGecko API</a> · Nyheter oppdatert manuelt</p>
+    <p style="margin-top:6px;">Ikke finansiell rådgivning · Kryptovaluta er svært risikabelt</p>
+  </footer>
+
+</div>
+
+<script>
+  const COINGECKO = 'https://api.coingecko.com/api/v3';
+  let currentPrice = 0;
+  let nokRate = 10.6;
+  let priceChart = null;
+  let currentDays = 30;
+
+  function fmt(n, decimals=2) {
+    return n.toLocaleString('no-NO', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+  }
+  function fmtBig(n) {
+    if (n >= 1e9) return '$' + fmt(n/1e9, 1) + 'B';
+    if (n >= 1e6) return '$' + fmt(n/1e6, 1) + 'M';
+    return '$' + fmt(n);
+  }
+  function changePill(pct, label) {
+    if (pct === null || pct === undefined) return '';
+    const cls = pct >= 0 ? 'up' : 'down';
+    const sign = pct >= 0 ? '+' : '';
+    return `<div class="change-pill ${cls}"><span class="period">${label}</span>${sign}${fmt(pct, 1)}%</div>`;
+  }
+
+  async function fetchMarket() {
+    const r = await fetch(`${COINGECKO}/coins/markets?vs_currency=usd&ids=ripple&order=market_cap_desc&per_page=1&page=1&sparkline=false&price_change_percentage=24h,7d,30d`);
+    if (!r.ok) throw new Error('API feil: ' + r.status);
+    const data = await r.json();
+    return data[0];
+  }
+
+  async function fetchNOK() {
+    try {
+      const r = await fetch(`${COINGECKO}/simple/price?ids=ripple&vs_currencies=nok`);
+      const d = await r.json();
+      const xrpNok = d.ripple?.nok;
+      if (xrpNok && currentPrice > 0) nokRate = xrpNok / currentPrice;
+    } catch(e) { /* fallback to default */ }
+  }
+
+  async function fetchChart(days) {
+    const r = await fetch(`${COINGECKO}/coins/ripple/market_chart?vs_currency=usd&days=${days}`);
+    if (!r.ok) throw new Error('Chart API feil');
+    return await r.json();
+  }
+
+  function renderMarket(d) {
+    currentPrice = d.current_price;
+    document.getElementById('mainPrice').textContent = '$' + fmt(currentPrice);
+
+    const changes = document.getElementById('priceChanges');
+    changes.innerHTML =
+      changePill(d.price_change_percentage_24h, '24t') +
+      changePill(d.price_change_percentage_7d_in_currency, '7d') +
+      changePill(d.price_change_percentage_30d_in_currency, '30d');
+
+    document.getElementById('sMktCap').textContent = fmtBig(d.market_cap);
+    document.getElementById('sMktRank').textContent = 'Rang #' + d.market_cap_rank + ' globalt';
+    document.getElementById('sVol').textContent = fmtBig(d.total_volume);
+    document.getElementById('sAth').textContent = '$' + fmt(d.ath);
+    const athDate = new Date(d.ath_date).toLocaleDateString('no-NO', {year:'numeric',month:'short'});
+    document.getElementById('sAthDate').textContent = athDate;
+    const supply = (d.circulating_supply / 1e9).toFixed(1) + 'B';
+    document.getElementById('sSupply').textContent = supply;
+
+    const now = new Date().toLocaleTimeString('no-NO', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById('updateTime').textContent = 'Oppdatert ' + now;
+
+    calcPortfolio();
+  }
+
+  function renderChart(chartData, days) {
+    const prices = chartData.prices;
+    let labels, data;
+
+    if (days <= 7) {
+      labels = prices.map(p => new Date(p[0]).toLocaleDateString('no-NO', {weekday:'short', day:'numeric'}));
+    } else if (days <= 30) {
+      labels = prices.map(p => new Date(p[0]).toLocaleDateString('no-NO', {day:'numeric', month:'short'}));
+    } else {
+      labels = prices.map(p => new Date(p[0]).toLocaleDateString('no-NO', {month:'short', year:'2-digit'}));
+    }
+    data = prices.map(p => p[1]);
+
+    // Sample for readability
+    const step = Math.max(1, Math.floor(labels.length / 40));
+    const sampledLabels = labels.filter((_,i) => i % step === 0 || i === labels.length-1);
+    const sampledData = data.filter((_,i) => i % step === 0 || i === data.length-1);
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+    gradient.addColorStop(0, 'rgba(0,198,255,0.2)');
+    gradient.addColorStop(1, 'rgba(0,198,255,0)');
+
+    if (priceChart) priceChart.destroy();
+
+    priceChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: sampledLabels,
+        datasets: [{
+          data: sampledData,
+          borderColor: '#00C6FF',
+          backgroundColor: gradient,
+          fill: true, tension: 0.3,
+          pointRadius: 0, borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#181c24',
+            borderColor: 'rgba(0,198,255,0.3)', borderWidth: 1,
+            titleColor: '#6B7280', bodyColor: '#F0F2F8',
+            bodyFont: { family: 'Space Mono', size: 13 },
+            callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(4) }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#6B7280', font: { family: 'Space Mono', size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          },
+          y: {
+            ticks: { color: '#6B7280', font: { family: 'Space Mono', size: 10 }, callback: v => '$' + v.toFixed(2) },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          }
+        }
+      }
+    });
+  }
+
+  async function loadChart(days, btn) {
+    currentDays = days;
+    if (btn) {
+      document.querySelectorAll('.range-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    try {
+      const cd = await fetchChart(days);
+      renderChart(cd, days);
+    } catch(e) { console.warn('Chart error:', e); }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBanner');
+    el.style.display = 'block';
+    el.textContent = '⚠ ' + msg + ' — viser siste kjente data.';
+  }
+
+  async function loadAll() {
+    const btn = document.getElementById('refreshBtn');
+    btn.disabled = true;
+    btn.textContent = '↻ Laster...';
+    document.getElementById('errorBanner').style.display = 'none';
+
+    try {
+      const [market] = await Promise.all([fetchMarket()]);
+      renderMarket(market);
+      await fetchNOK();
+      await loadChart(currentDays, null);
+    } catch(e) {
+      showError('Kunne ikke hente live data (' + e.message + ')');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '↻ Oppdater';
+    }
+  }
+
+  function calcPortfolio() {
+    const amt = parseFloat(document.getElementById('xrpInput').value);
+    const buy = parseFloat(document.getElementById('buyPrice').value);
+    if (isNaN(amt) || amt < 0 || currentPrice === 0) {
+      ['valUSD','valNOK','gainLoss','gainPct'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+        document.getElementById(id).style.color = 'var(--muted)';
+      });
+      return;
+    }
+    const usdVal = amt * currentPrice;
+    const nokVal = usdVal * nokRate;
+    document.getElementById('valUSD').textContent = '$' + fmt(usdVal);
+    document.getElementById('valNOK').textContent = 'kr ' + Math.round(nokVal).toLocaleString('no-NO');
+
+    if (!isNaN(buy) && buy > 0) {
+      const gain = usdVal - amt * buy;
+      const pct = ((currentPrice - buy) / buy) * 100;
+      const isUp = gain >= 0;
+      const col = isUp ? 'var(--green)' : 'var(--red)';
+      const sign = isUp ? '+' : '';
+      document.getElementById('gainLoss').textContent = sign + '$' + fmt(gain);
+      document.getElementById('gainLoss').style.color = col;
+      document.getElementById('gainPct').textContent = sign + fmt(pct, 1) + '%';
+      document.getElementById('gainPct').style.color = col;
+    } else {
+      document.getElementById('gainLoss').textContent = '—';
+      document.getElementById('gainLoss').style.color = 'var(--muted)';
+      document.getElementById('gainPct').textContent = '—';
+      document.getElementById('gainPct').style.color = 'var(--muted)';
+    }
+  }
+
+  // Restore saved holdings
+  window.addEventListener('load', async () => {
+    const savedAmt = localStorage.getItem('xrp_amount');
+    const savedBuy = localStorage.getItem('xrp_buyprice');
+    if (savedAmt) document.getElementById('xrpInput').value = savedAmt;
+    if (savedBuy) document.getElementById('buyPrice').value = savedBuy;
+
+    await loadAll();
+
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+  });
+
+  // Save holdings on input
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('xrpInput').addEventListener('input', function() {
+      localStorage.setItem('xrp_amount', this.value);
+    });
+    document.getElementById('buyPrice').addEventListener('input', function() {
+      localStorage.setItem('xrp_buyprice', this.value);
+    });
+  });
+
+  // Auto-refresh every 60s
+  setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
