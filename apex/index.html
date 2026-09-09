@@ -14,7 +14,7 @@ html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
   font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   touch-action:none;-webkit-tap-highlight-color:transparent;
   -webkit-user-select:none;user-select:none}
-canvas{display:block;width:100%;height:100%}
+#scene{display:block;width:100%;height:100%}
 
 #hud{position:fixed;inset:0;pointer-events:none;z-index:2;
   font-variant-numeric:tabular-nums;opacity:0;transition:opacity .6s ease}
@@ -49,6 +49,14 @@ canvas{display:block;width:100%;height:100%}
 #hud-rpm-ticks .tick.red{background:rgba(255,84,112,.75);height:9px}
 #hud-rpm-label{display:flex;justify-content:space-between;margin-top:4px;
   font-size:10px;letter-spacing:.16em;color:#7e8b9b}
+
+/* --- banekart nede til venstre --- */
+#hud-map{position:absolute;left:24px;bottom:24px;width:158px}
+#map-canvas{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:10px;
+  background:rgba(9,13,20,.58);border:1px solid rgba(232,237,242,.10)}
+#map-info{display:flex;justify-content:space-between;gap:8px;margin-top:6px;
+  font-size:10px;letter-spacing:.10em;color:#7e8b9b}
+#map-info b{color:#e8edf2;font-weight:500}
 
 /* --- telemetri oppe til venstre --- */
 #hud-tel{position:absolute;left:24px;top:22px;display:grid;grid-template-columns:auto auto;
@@ -124,6 +132,10 @@ canvas{display:block;width:100%;height:100%}
   #hud-tel{left:calc(12px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));
     font-size:9px;padding:8px 10px;gap:2px 10px}
   #hud-tel dt{font-size:8px}
+  /* Nede til venstre ligger rattflaten på mobil, så kartet flytter opp. */
+  #hud-map{left:50%;transform:translateX(-50%);bottom:auto;
+    top:calc(10px + env(safe-area-inset-top));width:92px}
+  #map-info{font-size:8px;margin-top:3px}
 }
 
 /* Portrett er spillbart, men trangt — et hint, ikke en sperre. */
@@ -156,6 +168,14 @@ canvas{display:block;width:100%;height:100%}
     <b>W</b> gass &middot; <b>S</b> brems/revers<br>
     <b>A</b> <b>D</b> styring &middot; <b>MELLOMROM</b> håndbrekk<br>
     <b>C</b> kamera &middot; <b>R</b> reset &middot; <b>ESC</b> pause
+  </div>
+
+  <div id="hud-map">
+    <canvas id="map-canvas"></canvas>
+    <div id="map-info">
+      <span>RUNDE <b id="map-lap">1</b></span>
+      <span id="map-distance">0 m</span>
+    </div>
   </div>
 
   <div id="hud-rpm">

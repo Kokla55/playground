@@ -10,6 +10,7 @@ import { ChaseCamera, CockpitCamera } from './camera/CameraRig.js';
 import { Mirrors } from './render/Mirrors.js';
 import { Circuit } from './world/Circuit.js';
 import { Hud } from './ui/Hud.js';
+import { MiniMap } from './ui/MiniMap.js';
 import { TouchControls, hasTouch } from './ui/TouchControls.js';
 
 const FIXED_STEP = 1 / 120;
@@ -62,6 +63,12 @@ async function boot() {
   let cameraIndex = 0;
 
   const hud = new Hud(CAR);
+  const miniMap = new MiniMap(world.path, {
+    canvas: document.getElementById('map-canvas'),
+    lapEl: document.getElementById('map-lap'),
+    distanceEl: document.getElementById('map-distance'),
+  });
+  miniMap.reset();
   const hudEl = document.getElementById('hud');
   const pausePanel = document.getElementById('pause');
 
@@ -86,6 +93,7 @@ async function boot() {
       if (input.consume('reset')) {
         vehicle.reset();
         for (const c of cameras) c.reset();
+        miniMap.reset();
       }
       if (input.consume('camera')) {
         cameraIndex = (cameraIndex + 1) % cameras.length;
@@ -112,6 +120,7 @@ async function boot() {
 
       renderer.render(world.scene, camera);
       hud.update(vehicle.telemetry, loop.fps);
+      miniMap.update(dt, vehicle);
     },
   });
 
@@ -127,7 +136,7 @@ async function boot() {
 
   if (import.meta.env.DEV) {
     window.__apex = {
-      physics, world, vehicle, model, cockpit, mirrors,
+      physics, world, vehicle, model, cockpit, mirrors, miniMap,
       input, camera, cameras, loop, CAR,
       step: stepSimulation, fixedStep: FIXED_STEP,
       setCamera: (i) => { cameraIndex = i; cameras[i].reset(); hudEl.classList.toggle('incar', i === 0); },

@@ -51,7 +51,7 @@ src/
   render/    Mirrors
   world/     TrackPath (senterlinje), TrackBuilder (asfalt, curbs, rekkverk),
              Terrain (landskap og vegetasjon), Circuit (setter alt sammen)
-  ui/        Hud, TouchControls
+  ui/        Hud, MiniMap, TouchControls
 ```
 
 Hver del kjenner så lite som mulig til de andre: dekkmodellen vet ingenting om
@@ -146,6 +146,13 @@ og kan være stort og detaljert gratis.
 veibanen nøyaktig, og først lenger ute får det lov til å bølge og reise seg i
 fjell med snø på toppene. 2200 trær og 520 steiner er strødd ut der bakken ikke
 er for bratt.
+
+## Kartet i hjørnet
+
+Banekartet står i fast retning i stedet for å rotere med bilen. Et roterende kart
+er lettere å følge i øyeblikket, men da mister man oversikten over hvor på runden
+man er. Den delen av runden du har kjørt tegnes opp i klar farge, så avstanden er
+noe du ser framfor å måtte lese. Under kartet står runde og meter av rundelengden.
 
 ## Status
 
