@@ -141,8 +141,10 @@ export class Vehicle {
     _q.copy(this.quaternion);
 
     _fwd.set(0, 0, 1).applyQuaternion(_q);
-    _right.set(1, 0, 0).applyQuaternion(_q);
     _up.set(0, 1, 0).applyQuaternion(_q);
+    // Bilen peker mot +Z med +Y opp. I et høyrehåndssystem ligger da førerens
+    // høyre side mot −X, ikke +X — står du og ser mot +Z, peker høyre hånd dit.
+    _right.set(-1, 0, 0).applyQuaternion(_q);
 
     const lv = body.linvel();
     const vel = _bodyVel.set(lv.x, lv.y, lv.z);
@@ -199,7 +201,11 @@ export class Vehicle {
   _applySteering(input, forwardSpeed) {
     const s = this.cfg.steering;
     const ratio = Math.max(s.minRatio, 1 / (1 + Math.abs(forwardSpeed) * s.speedFactor));
-    const angle = input.steer * s.maxAngle * ratio;
+
+    // Styrevinkelen dreies om opp-aksen, og en positiv rotasjon der svinger mot
+    // venstre — den vanlige konvensjonen i kjøretøydynamikk. Inndata er positiv
+    // mot høyre, så tegnet snus her, ett sted, i stedet for spredt utover.
+    const angle = -input.steer * s.maxAngle * ratio;
 
     for (const w of this.wheels) {
       if (!w.cfg.steered) { w.steerAngle = 0; continue; }

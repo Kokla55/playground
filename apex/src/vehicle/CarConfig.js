@@ -68,22 +68,22 @@ export const CAR = {
 
   wheels: [
     {
-      name: 'FL', pos: { x: -0.79, y: 0.22, z: AXLE_FRONT },
+      name: 'FR', pos: { x: -0.79, y: 0.22, z: AXLE_FRONT },
       steered: true, driven: false, handbrake: false,
       brakeShare: 0.31, tire: FRONT_TIRE, ...FRONT_SUSPENSION,
     },
     {
-      name: 'FR', pos: { x: 0.79, y: 0.22, z: AXLE_FRONT },
+      name: 'FL', pos: { x: 0.79, y: 0.22, z: AXLE_FRONT },
       steered: true, driven: false, handbrake: false,
       brakeShare: 0.31, tire: FRONT_TIRE, ...FRONT_SUSPENSION,
     },
     {
-      name: 'RL', pos: { x: -0.82, y: 0.22, z: AXLE_REAR },
+      name: 'RR', pos: { x: -0.82, y: 0.22, z: AXLE_REAR },
       steered: false, driven: true, handbrake: true,
       brakeShare: 0.19, tire: REAR_TIRE, ...REAR_SUSPENSION,
     },
     {
-      name: 'RR', pos: { x: 0.82, y: 0.22, z: AXLE_REAR },
+      name: 'RL', pos: { x: 0.82, y: 0.22, z: AXLE_REAR },
       steered: false, driven: true, handbrake: true,
       brakeShare: 0.19, tire: REAR_TIRE, ...REAR_SUSPENSION,
     },

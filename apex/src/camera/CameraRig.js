@@ -84,8 +84,9 @@ export class ChaseCamera {
 export class HoodCamera {
   constructor(camera, cfg) {
     this.camera = camera;
-    this.offset = new THREE.Vector3(-0.36, 1.14 - cfg.ridePoint + 0.22, 0.30);
-    this.lookOffset = new THREE.Vector3(-0.36, 1.10 - cfg.ridePoint + 0.22, 12);
+    // Førerplassen ligger på venstre side, altså +X med denne orienteringen.
+    this.offset = new THREE.Vector3(0.36, 1.14 - cfg.ridePoint + 0.22, 0.30);
+    this.lookOffset = new THREE.Vector3(0.36, 1.10 - cfg.ridePoint + 0.22, 12);
     this._p = new THREE.Vector3();
     this._t = new THREE.Vector3();
     this.fov = 68;
