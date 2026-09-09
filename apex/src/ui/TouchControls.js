@@ -36,9 +36,15 @@ export class TouchControls {
     this._bindPedal(this.el.handbrake, 'handbrake');
 
     for (const [id, action] of [['touch-cam', 'camera'], ['touch-reset', 'reset'],
-                                  ['touch-mute', 'mute'], ['touch-track', 'track'],
+                                  ['touch-mute', 'mute'], ['touch-circuit', 'track'],
                                   ['touch-pause', 'pause']]) {
       const btn = root.getElementById(id);
+      // En id som peker på feil element er en stille katastrofe: BANE-knappen
+      // og styreskinna het begge touch-track, så getElementById fant skinna og
+      // hvert tak i rattet byttet bane og startet spillet på nytt.
+      if (!btn || !btn.classList.contains('tbtn')) {
+        throw new Error(`Berøringsknapp "${id}" mangler eller peker på feil element`);
+      }
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         this.actions.add(action);
