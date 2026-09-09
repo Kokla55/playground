@@ -36,7 +36,7 @@ export class Mirrors {
     const specs = [
       {
         name: 'rear',
-        mesh: { pos: [0.02, 1.19 - o, 0.74], rotY: Math.PI, rotX: -0.12, size: [0.28, 0.082] },
+        mesh: { pos: [0.02, 1.22 - o, 0.74], rotY: Math.PI, rotX: -0.12, size: [0.28, 0.082] },
         // En midtmotorbil har i praksis ingen sikt rett bakover gjennom
         // motordekselet. Kameraet løftes derfor over dekselet, slik at speilet
         // viser noe som faktisk er til nytte.
@@ -46,14 +46,14 @@ export class Mirrors {
       {
         // Førersiden ligger mot +X, siden bilen peker mot +Z.
         name: 'left',
-        mesh: { pos: [1.05, 0.99 - o, 1.03], rotY: Math.PI - 0.34, rotX: -0.07, size: [0.155, 0.082] },
-        cam: { pos: [1.05, 0.99 - o, 1.00], dir: [0.36, -0.08, -1], fov: 52 },
+        mesh: { pos: [1.05, 0.95 - o, 1.03], rotY: Math.PI - 0.34, rotX: -0.07, size: [0.155, 0.082] },
+        cam: { pos: [1.05, 0.95 - o, 1.00], dir: [0.36, -0.08, -1], fov: 52 },
         res: [Math.round(320 * scale), Math.round(165 * scale)],
       },
       {
         name: 'right',
-        mesh: { pos: [-1.05, 0.99 - o, 1.03], rotY: Math.PI + 0.34, rotX: -0.07, size: [0.155, 0.082] },
-        cam: { pos: [-1.05, 0.99 - o, 1.00], dir: [-0.36, -0.08, -1], fov: 52 },
+        mesh: { pos: [-1.05, 0.95 - o, 1.03], rotY: Math.PI + 0.34, rotX: -0.07, size: [0.155, 0.082] },
+        cam: { pos: [-1.05, 0.95 - o, 1.00], dir: [-0.36, -0.08, -1], fov: 52 },
         res: [Math.round(320 * scale), Math.round(165 * scale)],
       },
     ];

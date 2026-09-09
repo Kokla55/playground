@@ -11,23 +11,23 @@ import * as THREE from 'three';
 
 // z, halvbredde nede / ved skulder / oppe, høyde nede / ved skulder / oppe
 const SECTIONS = [
-  { z:  2.24, hwB: 0.52, hwS: 0.78, hwT: 0.62, yB: 0.32, yS: 0.56, yT: 0.66 },
-  { z:  2.05, hwB: 0.68, hwS: 0.92, hwT: 0.76, yB: 0.24, yS: 0.62, yT: 0.74 },
-  { z:  1.97, hwB: 0.80, hwS: 0.98, hwT: 0.84, yB: 0.20, yS: 0.68, yT: 0.78 },
-  { z:  1.75, hwB: 0.98, hwS: 1.03, hwT: 0.88, yB: 0.60, yS: 0.78, yT: 0.83 },
-  { z:  1.54, hwB: 1.00, hwS: 1.04, hwT: 0.90, yB: 0.73, yS: 0.80, yT: 0.86 },
-  { z:  1.30, hwB: 0.98, hwS: 1.03, hwT: 0.90, yB: 0.60, yS: 0.80, yT: 0.88 },
-  { z:  1.10, hwB: 0.82, hwS: 0.99, hwT: 0.92, yB: 0.20, yS: 0.82, yT: 0.92 },
-  { z:  0.75, hwB: 0.80, hwS: 0.97, hwT: 0.86, yB: 0.14, yS: 0.86, yT: 1.06 },
-  { z:  0.30, hwB: 0.80, hwS: 0.97, hwT: 0.70, yB: 0.13, yS: 0.88, yT: 1.21 },
-  { z: -0.15, hwB: 0.80, hwS: 0.98, hwT: 0.68, yB: 0.13, yS: 0.88, yT: 1.22 },
-  { z: -0.67, hwB: 0.82, hwS: 1.00, hwT: 0.80, yB: 0.20, yS: 0.88, yT: 1.10 },
-  { z: -0.90, hwB: 0.99, hwS: 1.05, hwT: 0.88, yB: 0.60, yS: 0.86, yT: 1.02 },
-  { z: -1.11, hwB: 1.01, hwS: 1.06, hwT: 0.92, yB: 0.73, yS: 0.85, yT: 0.99 },
-  { z: -1.35, hwB: 0.99, hwS: 1.05, hwT: 0.94, yB: 0.60, yS: 0.84, yT: 0.97 },
-  { z: -1.55, hwB: 0.84, hwS: 1.02, hwT: 0.94, yB: 0.22, yS: 0.82, yT: 0.95 },
-  { z: -2.05, hwB: 0.74, hwS: 0.96, hwT: 0.90, yB: 0.24, yS: 0.76, yT: 0.90 },
-  { z: -2.26, hwB: 0.60, hwS: 0.84, hwT: 0.78, yB: 0.34, yS: 0.68, yT: 0.84 },
+  { z:  2.24, hwB: 0.52, hwS: 0.78, hwT: 0.62, yB: 0.32, yS: 0.56, yT: 0.52 },
+  { z:  2.05, hwB: 0.68, hwS: 0.92, hwT: 0.76, yB: 0.24, yS: 0.62, yT: 0.60 },
+  { z:  1.97, hwB: 0.80, hwS: 0.98, hwT: 0.84, yB: 0.20, yS: 0.68, yT: 0.64 },
+  { z:  1.75, hwB: 0.98, hwS: 1.03, hwT: 0.88, yB: 0.60, yS: 0.78, yT: 0.72 },
+  { z:  1.54, hwB: 1.00, hwS: 1.04, hwT: 0.90, yB: 0.73, yS: 0.80, yT: 0.76 },
+  { z:  1.30, hwB: 0.98, hwS: 1.03, hwT: 0.90, yB: 0.60, yS: 0.80, yT: 0.80 },
+  { z:  1.10, hwB: 0.82, hwS: 0.99, hwT: 0.92, yB: 0.20, yS: 0.82, yT: 0.86 },
+  { z:  0.75, hwB: 0.80, hwS: 0.97, hwT: 0.86, yB: 0.14, yS: 0.86, yT: 1.26 },
+  { z:  0.30, hwB: 0.80, hwS: 0.97, hwT: 0.70, yB: 0.13, yS: 0.88, yT: 1.35 },
+  { z: -0.15, hwB: 0.80, hwS: 0.98, hwT: 0.68, yB: 0.13, yS: 0.88, yT: 1.36 },
+  { z: -0.67, hwB: 0.82, hwS: 1.00, hwT: 0.80, yB: 0.20, yS: 0.88, yT: 1.25 },
+  { z: -0.90, hwB: 0.99, hwS: 1.05, hwT: 0.88, yB: 0.60, yS: 0.86, yT: 1.13 },
+  { z: -1.11, hwB: 1.01, hwS: 1.06, hwT: 0.92, yB: 0.73, yS: 0.85, yT: 1.07 },
+  { z: -1.35, hwB: 0.99, hwS: 1.05, hwT: 0.94, yB: 0.60, yS: 0.84, yT: 1.03 },
+  { z: -1.55, hwB: 0.84, hwS: 1.02, hwT: 0.94, yB: 0.22, yS: 0.82, yT: 0.99 },
+  { z: -2.05, hwB: 0.74, hwS: 0.96, hwT: 0.90, yB: 0.24, yS: 0.76, yT: 0.93 },
+  { z: -2.26, hwB: 0.60, hwS: 0.84, hwT: 0.78, yB: 0.34, yS: 0.68, yT: 0.87 },
 ];
 
 const RING_LEN = 11;
@@ -175,9 +175,12 @@ export class CarModel {
         color: 0x1d3557, metalness: 0.55, roughness: 0.26,
         clearcoat: 1, clearcoatRoughness: 0.06,
       }),
+      // Ruta var nesten ugjennomsiktig da bilen var tom innvendig. Nå som det
+      // finnes et interiør bak den, skal den oppføre seg som glass: lett tonet,
+      // men til å se veien gjennom.
       glass: new THREE.MeshPhysicalMaterial({
-        color: 0x0d1218, metalness: 0.05, roughness: 0.05,
-        transparent: true, opacity: 0.84, side: THREE.DoubleSide,
+        color: 0x24313d, metalness: 0.0, roughness: 0.04,
+        transparent: true, opacity: 0.17, side: THREE.DoubleSide,
       }),
       tire: new THREE.MeshStandardMaterial({ color: 0x0e1013, roughness: 0.94, metalness: 0.02 }),
       rim: new THREE.MeshStandardMaterial({ color: 0xb6bec8, metalness: 0.90, roughness: 0.30 }),
@@ -216,10 +219,10 @@ export class CarModel {
   }
 
   _addLights(cfg) {
-    const y = 0.70 - cfg.ridePoint;
+    const y = 0.50 - cfg.ridePoint;
     for (const x of [-0.60, 0.60]) {
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.08, 0.12), this.materials.lightFront);
-      head.position.set(x, y, 2.03);
+      head.position.set(x, y, 2.00);
       this.group.add(head);
     }
     const tail = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.09, 0.06), this.materials.lightRear);
@@ -233,10 +236,10 @@ export class CarModel {
     // Sidespeil.
     for (const x of [-0.96, 0.96]) {
       const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.05), this.materials.trim);
-      stalk.position.set(x, 0.96 - o, 1.02);
+      stalk.position.set(x, 0.92 - o, 1.02);
       this.group.add(stalk);
       const pod = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.11, 0.08), this.materials.trim);
-      pod.position.set(x * 1.09, 0.99 - o, 1.03);
+      pod.position.set(x * 1.09, 0.95 - o, 1.03);
       this.group.add(pod);
     }
 

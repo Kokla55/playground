@@ -121,7 +121,10 @@ export class CockpitCamera {
   constructor(camera, cfg, eye) {
     this.camera = camera;
     this.eye = eye.clone();
-    this.fov = 80;
+    // Snevrere synsvinkel enn tidligere: 80 grader presset veien sammen til en
+    // stripe. 66 gir førersetet en naturlig utsikt, og speilene ligger fortsatt
+    // innenfor kanten.
+    this.fov = 66;
 
     this._headX = 0;
     this._headZ = 0;
@@ -153,7 +156,7 @@ export class CockpitCamera {
     );
     this._t.set(
       this._p.x + Math.sin(this._yaw) * 24,
-      this._p.y - 0.9,
+      this._p.y - 1.7,
       this._p.z + Math.cos(this._yaw) * 24,
     );
 

@@ -111,7 +111,8 @@ export class CockpitModel {
     const o = cfg.ridePoint;
     const y = (aboveGround) => aboveGround - o;
 
-    // Øyehøyde 1.10 m over bakken, godt bak rattet og godt over instrumentbrettet.
+    // Øyehøyde 1.10 m over bakken. Instrumentbrettet ligger godt under
+    // sikteliniën, og taket er hevet slik at det ikke kutter horisonten.
     this.eye = new THREE.Vector3(DRIVER_X, y(1.10), -0.05);
 
     const m = {
@@ -135,22 +136,22 @@ export class CockpitModel {
 
   _addDashboard(m, y) {
     const top = box(1.78, 0.09, 0.60, m.dash);
-    top.position.set(0, y(0.92), 1.02);
+    top.position.set(0, y(0.70), 1.02);
     top.rotation.x = -0.10;
     this.group.add(top);
 
     const face = box(1.78, 0.34, 0.10, m.dash);
-    face.position.set(0, y(0.75), 0.78);
+    face.position.set(0, y(0.56), 0.78);
     this.group.add(face);
 
     const lower = box(1.70, 0.32, 0.34, m.leather);
-    lower.position.set(0, y(0.52), 0.86);
+    lower.position.set(0, y(0.40), 0.86);
     this.group.add(lower);
 
     // Instrumenthuset er vippet mot føreren, og skjermen henger i det, slik at
     // de aldri kan komme i utakt med hverandre.
     const binnacle = box(0.48, 0.26, 0.20, m.trim);
-    binnacle.position.set(DRIVER_X, y(1.00), 0.74);
+    binnacle.position.set(DRIVER_X, y(0.86), 0.74);
     binnacle.rotation.x = -0.17;
     this.group.add(binnacle);
 
@@ -170,7 +171,7 @@ export class CockpitModel {
     // Rattet sitter i en gruppe som er vippet som en rattstamme. Selve rattet
     // snurrer om sin egen akse inni den.
     const column = new THREE.Group();
-    column.position.set(DRIVER_X, y(0.80), 0.50);
+    column.position.set(DRIVER_X, y(0.72), 0.50);
     column.rotation.x = 0.40;
     this.group.add(column);
 
@@ -204,19 +205,19 @@ export class CockpitModel {
 
   _addConsole(m, y) {
     const tunnel = box(0.34, 0.28, 1.15, m.trim);
-    tunnel.position.set(0, y(0.56), 0.14);
+    tunnel.position.set(0, y(0.50), 0.14);
     this.group.add(tunnel);
 
     const centreScreen = new THREE.Mesh(
       new THREE.PlaneGeometry(0.30, 0.20),
       new THREE.MeshBasicMaterial({ color: 0x0b1a24, toneMapped: false, side: THREE.DoubleSide }),
     );
-    centreScreen.position.set(0, y(0.83), 0.735);
+    centreScreen.position.set(0, y(0.70), 0.735);
     centreScreen.rotation.set(0.20, Math.PI, 0);
     this.group.add(centreScreen);
 
     const shifter = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.030, 0.16, 10), m.rim);
-    shifter.position.set(0, y(0.76), 0.30);
+    shifter.position.set(0, y(0.64), 0.30);
     this.group.add(shifter);
   }
 
@@ -247,8 +248,8 @@ export class CockpitModel {
   _addPillarsAndDoors(m, y) {
     for (const x of [0.84, -0.84]) {
       // A-stolpen lener seg bakover med frontruta og innover mot taket.
-      const pillar = box(0.065, 0.58, 0.085, m.dash);
-      pillar.position.set(x, y(1.06), 0.95);
+      const pillar = box(0.065, 0.70, 0.085, m.dash);
+      pillar.position.set(x, y(1.16), 0.90);
       pillar.rotation.set(-0.55, 0, Math.sign(x) * 0.16);
       this.group.add(pillar);
 
