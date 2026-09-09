@@ -189,6 +189,34 @@ du sikter, er den skarp. Under terskelen kobles hele kjeden ut og bildet tegnes
 rett til skjermen, så effekten koster ingenting når du står stille. På mobil er
 den av, og skyggene bruker to kaskader i stedet for tre.
 
+## Lyden
+
+Ingenting er spilt inn. Spillet er én fil, så det finnes ingen lydfiler — alt
+lages av oscillatorer og støy i Web Audio. Det er faktisk en fordel for en
+motor: en innspilling er låst til turtallene den ble tatt opp ved, mens en
+syntetisert motor følger turtallet nøyaktig, også midt i et girskift.
+
+**Motoren** er en firetakts V6, så den tenner tre ganger per veivaksomdreining
+og grunntonen er turtall/60 × 3 — 45 Hz på tomgang, 405 Hz mot sperren. Klangen
+er tre lag: overtonene som gir kropp, halve tennfrekvensen som gir V6-en dens
+ujevne lump, og filtrert støy som er innsug og eksos. Gassen styrer et filter
+oppå det hele. Målt: overtonene 6–9 ligger på 0,13 av grunntonene med gassen
+sluppet og 0,34 med full gass — motoren lysner altså under belastning i stedet
+for bare å bli høyere.
+
+**Resten følger telemetrien.** Dekkene skriker når metningen passerer et punkt
+og hjulene faktisk ruller. Vinden vokser med kvadratet av farten, som
+luftmotstanden selv. Underlaget rumler ulikt på asfalt, curbs, gress og grus.
+Gummistoppen gir et dumpt slag, girskift et tørt klikk, og et brått fartstap
+som ikke kommer av bremsene blir et sammenstøt.
+
+Én ting falt ut av modellen uten å være kodet inn: når bilen er i lufta blir
+det stille under den, fordi rumlingen skaleres med hjul på bakken.
+
+Nettlesere gir ikke lyd før brukeren har gjort noe, så kjeden bygges på første
+tastetrykk eller berøring — ikke ved oppstart. **M** slår lyden av og på, eller
+LYD-knappen på mobil.
+
 ## Status
 
 - [x] **Fase 0** — kartlegging av miljø og teknologivalg
@@ -199,7 +227,7 @@ den av, og skyggene bruker to kaskader i stedet for tre.
       dosering, skog, fjell og terreng som binder seg til banen
 - [x] **Fase 4** — materialkart generert i koden, kaskadeskygger, sol på
       himmelen og en etterbehandlingskjede med fartsuskarphet og vignett
-- [ ] **Fase 5** — lyd drevet av turtall, gir og belastning
+- [x] **Fase 5** — lyd syntetisert fra telemetrien: motor, dekk, vind og underlag
 - [ ] **Fase 6** — kyst- og fjellbane
 - [ ] **Fase 7** — vær og døgnsyklus
 - [ ] **Fase 8** — AI-motstandere

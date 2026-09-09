@@ -9,6 +9,7 @@ import { CockpitModel, COCKPIT_LAYER } from './vehicle/CockpitModel.js';
 import { ChaseCamera, CockpitCamera } from './camera/CameraRig.js';
 import { Mirrors } from './render/Mirrors.js';
 import { PostFx } from './render/PostFx.js';
+import { Audio } from './audio/Audio.js';
 import { Circuit } from './world/Circuit.js';
 import { Hud } from './ui/Hud.js';
 import { MiniMap } from './ui/MiniMap.js';
@@ -70,6 +71,19 @@ async function boot() {
   const postFx = new PostFx(renderer, world.scene, camera);
   postFx.enabled = !mobile;
 
+  // Nettlesere gir ikke lyd før brukeren har gjort noe selv, så lydkjeden
+  // bygges på første tastetrykk eller berøring — ikke ved oppstart.
+  const audio = new Audio(CAR);
+  const muteBtn = document.getElementById('touch-mute');
+  const visLyd = () => muteBtn?.classList.toggle('av', audio.muted);
+  const vekkLyden = () => {
+    if (audio.start()) audio.resume();
+    visLyd();
+  };
+  for (const type of ['keydown', 'pointerdown', 'touchstart']) {
+    window.addEventListener(type, vekkLyden, { once: true, passive: true });
+  }
+
   const input = new VehicleInput(CAR);
   if (mobile) input.touch = new TouchControls();
 
@@ -118,6 +132,10 @@ async function boot() {
         // skjermgrensesnittet trekker seg unna.
         hudEl.classList.toggle('incar', cameraIndex === 0);
       }
+      if (input.consume('mute')) {
+        audio.toggleMute();
+        visLyd();
+      }
       if (input.consume('pause')) {
         loop.paused = !loop.paused;
         pausePanel.classList.toggle('on', loop.paused);
@@ -138,6 +156,7 @@ async function boot() {
       mirrors.update(dt, renderer, world.scene, vehicle);
 
       postFx.render(vehicle.telemetry.speed);
+      audio.update(dt, vehicle);
       hud.update(vehicle.telemetry, loop.fps);
       miniMap.update(dt, vehicle);
     },
@@ -156,7 +175,7 @@ async function boot() {
 
   if (import.meta.env.DEV) {
     window.__apex = {
-      physics, world, vehicle, model, cockpit, mirrors, miniMap, renderer, postFx,
+      physics, world, vehicle, model, cockpit, mirrors, miniMap, renderer, postFx, audio,
       input, camera, cameras, loop, CAR,
       step: stepSimulation, fixedStep: FIXED_STEP,
       setCamera: (i) => { cameraIndex = i; cameras[i].reset(); hudEl.classList.toggle('incar', i === 0); },

@@ -18,6 +18,7 @@ const ACTION_KEYS = {
   KeyC: 'camera',
   Escape: 'pause',
   KeyH: 'help',
+  KeyM: 'mute',
 };
 
 export class VehicleInput {
