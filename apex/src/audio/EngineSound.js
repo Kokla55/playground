@@ -20,10 +20,10 @@ import { noiseSource, harmonicWave, glide, clamp } from './Synth.js';
 // Rekkene går høyt opp med vilje. På tomgang ligger grunntonen på 45 Hz, og en
 // telefonhøyttaler gjengir nesten ingenting under 500 Hz — uten overtoner langt
 // oppe blir motoren helt borte på mobil, uansett hvor høyt man skrur.
-const BODY = [1.0, 0.62, 0.78, 0.34, 0.22, 0.40, 0.20, 0.16, 0.13, 0.11,
-              0.09, 0.09, 0.07, 0.06, 0.05, 0.05, 0.04, 0.03];
-const RASP = [0.5, 0.9, 0.7, 0.85, 0.6, 0.55, 0.5, 0.46, 0.4, 0.36, 0.32, 0.3,
-              0.26, 0.24, 0.2, 0.18, 0.15, 0.13];
+const BODY = [1.0, 0.70, 0.82, 0.34, 0.20, 0.34, 0.14, 0.11, 0.08, 0.06,
+              0.05, 0.04, 0.03, 0.025, 0.02, 0.016, 0.012, 0.01];
+const RASP = [1.0, 0.72, 0.66, 0.52, 0.38, 0.30, 0.23, 0.18, 0.14, 0.11, 0.09, 0.075,
+              0.06, 0.05, 0.04, 0.032, 0.026, 0.02];
 
 export class EngineSound {
   constructor(ctx, destination, noise, {
@@ -49,7 +49,9 @@ export class EngineSound {
 
     // Litt metning gir motoren snerr uten å bli støy.
     this.drive = ctx.createWaveShaper();
-    this.drive.curve = saturation(2.4);
+    // Metningen lager sine egne høye overtoner. Mye av den ga motoren en
+    // skarp kant; 1.5 gir snerr uten at det blir lyst.
+    this.drive.curve = saturation(1.5);
     this.drive.oversample = '2x';
     this.drive.connect(this.tone);
 
@@ -59,11 +61,23 @@ export class EngineSound {
     this.bodyGain.gain.value = 0.55;
     this.body.connect(this.bodyGain).connect(this.drive);
 
+    // Tennfrekvensen alene er 400 Hz ved 8000 o/min — det er fysikk, og den kan
+    // ikke filtreres bort. Skal motoren låte tung, må tyngden komme fra det som
+    // ligger UNDER den: halvorden, og veivakselens egen omdreining. Ekte motorer
+    // har begge deler, og det er de som gir en V6 dyp brumming i stedet for en
+    // høy tone.
     this.half = ctx.createOscillator();
-    this.half.setPeriodicWave(harmonicWave(ctx, [1.0, 0.3, 0.15]));
+    this.half.setPeriodicWave(harmonicWave(ctx, [1.0, 0.34, 0.16, 0.08]));
     this.halfGain = ctx.createGain();
-    this.halfGain.gain.value = 0.22;
+    this.halfGain.gain.value = 0.52;
     this.half.connect(this.halfGain).connect(this.drive);
+
+    // Første orden: én gang per veivaksomdreining, en tredel av tennfrekvensen.
+    this.crank = ctx.createOscillator();
+    this.crank.setPeriodicWave(harmonicWave(ctx, [1.0, 0.4, 0.2, 0.1]));
+    this.crankGain = ctx.createGain();
+    this.crankGain.gain.value = 0.30;
+    this.crank.connect(this.crankGain).connect(this.drive);
 
     this.rasp = ctx.createOscillator();
     this.rasp.setPeriodicWave(harmonicWave(ctx, RASP));
@@ -88,7 +102,7 @@ export class EngineSound {
     this.turbo.connect(this.turboGain).connect(this.out);
 
     this._boost = 0;
-    for (const o of [this.body, this.half, this.rasp, this.turbo]) o.start();
+    for (const o of [this.body, this.half, this.crank, this.rasp, this.turbo]) o.start();
     this.intake.start();
   }
 
@@ -114,20 +128,24 @@ export class EngineSound {
 
     glide(this.body.frequency, firing, ctx, 0.02);
     glide(this.half.frequency, firing * 0.5, ctx, 0.02);
+    glide(this.crank.frequency, rev, ctx, 0.02);
     glide(this.rasp.frequency, firing, ctx, 0.02);
 
     // Med gass åpner filteret seg og raspen slipper til.
-    // Bunnen på 900 Hz er der for de små høyttalerne: under det hører en
-    // telefon knapt noe, så filteret må aldri lukke seg lenger ned enn dette.
-    glide(this.tone.frequency, 900 + firing * (3.0 + gass * 6.5) + last * 1600, ctx, 0.05);
-    glide(this.raspGain.gain, 0.05 + gass * 0.42, ctx, 0.06);
-    glide(this.bodyGain.gain, 0.62 - gass * 0.10, ctx, 0.06);
+    //
+    // To hensyn drar hver sin vei. Bunnen må ligge høyt nok til at en telefon
+    // hører motoren i det hele tatt; taket må ligge lavt nok til at den ikke
+    // blir lys og skarp i høyt turtall. 620 Hz og en moderat stigning er der
+    // de møtes: målt tyngdepunkt 928 Hz ved 8000 o/min var for lyst.
+    glide(this.tone.frequency, 600 + firing * (1.3 + gass * 2.2) + last * 800, ctx, 0.05);
+    glide(this.raspGain.gain, 0.04 + gass * 0.30, ctx, 0.06);
+    glide(this.bodyGain.gain, 0.74 - gass * 0.08, ctx, 0.06);
 
-    glide(this.intakeBand.frequency, 260 + firing * 3.2, ctx, 0.05);
-    glide(this.intakeGain.gain, 0.05 + gass * 0.16 + turtallsdel * 0.09, ctx, 0.06);
+    glide(this.intakeBand.frequency, 220 + firing * 1.9, ctx, 0.05);
+    glide(this.intakeGain.gain, 0.04 + gass * 0.11 + turtallsdel * 0.05, ctx, 0.06);
 
-    glide(this.turbo.frequency, 2400 + this._boost * 4200, ctx, 0.08);
-    glide(this.turboGain.gain, this._boost * this._boost * 0.035, ctx, 0.08);
+    glide(this.turbo.frequency, 1700 + this._boost * 1900, ctx, 0.08);
+    glide(this.turboGain.gain, this._boost * this._boost * 0.016, ctx, 0.08);
 
     // Under girskift kuttes momentet, og lyden faller sammen et øyeblikk.
     const kutt = t.shifting ? 0.42 : 1;
@@ -136,7 +154,7 @@ export class EngineSound {
   }
 
   dispose() {
-    for (const o of [this.body, this.half, this.rasp, this.turbo, this.intake]) {
+    for (const o of [this.body, this.half, this.crank, this.rasp, this.turbo, this.intake]) {
       try { o.stop(); } catch { /* allerede stoppet */ }
     }
     this.out.disconnect();
