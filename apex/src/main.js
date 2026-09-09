@@ -30,7 +30,7 @@ function createRenderer(canvas, mobile) {
   // PCFSoft ble fjernet i three r186; PCF er det som faktisk kjører.
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.12;
   return renderer;
 }
 

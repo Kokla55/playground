@@ -30,7 +30,7 @@ const BlurShader = {
   uniforms: {
     tDiffuse: { value: null },
     strength: { value: 0 },
-    vignette: { value: 0.24 },
+    vignette: { value: 0.14 },
     centre: { value: new THREE.Vector2(0.5, 0.5) },
   },
   vertexShader: `

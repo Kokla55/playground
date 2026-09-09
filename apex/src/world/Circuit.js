@@ -11,12 +11,14 @@ import { Terrain } from './Terrain.js';
  * inkludert hvor bilen starter og hvor terrenget legger seg — utledes av den.
  */
 
-// Sola står 30 grader over horisonten, ikke rett opp. Midt på dagen faller
-// skyggen under bilen og landskapet blir flatt; på ettermiddagen får alt
-// lengde og form, og bilens egen skygge blir noe du faktisk ser.
-const SUN_OFFSET = new THREE.Vector3(150, 133, 175);
+// Sola står 38 grader over horisonten. Rett opp blir landskapet flatt og
+// skyggen forsvinner under bilen; for lavt, og bakken blir mørk — sollyset på
+// en vannrett flate følger cosinus til solhøyden, så 30 grader ga en tredjedel
+// mindre lys på veibanen enn 48 gjorde. 38 er der skyggene fortsatt er lange
+// nok til å gi form, men veien er lys nok til å se ut som dagslys.
+const SUN_OFFSET = new THREE.Vector3(150, 180, 175);
 const SUN_COLOUR = 0xfff3e0;
-const SUN_INTENSITY = 3.1;
+const SUN_INTENSITY = 3.5;
 
 // Hvor dypt hvert skyggekart rekker, i meter fra kameraet.
 // Det MÅ være nøyaktig like mange grenser som kaskader. Er det flere, bygger
@@ -146,7 +148,9 @@ export class Circuit {
     this.scene.add(sun, sun.target);
     this.sun = sun;
 
-    this.scene.add(new THREE.HemisphereLight(0xa8c8ea, 0x4a5238, 1.1));
+    // Himmellyset bærer alt som ligger i skygge. Uten nok av det blir
+    // skyggesidene nesten svarte selv om sola er sterk.
+    this.scene.add(new THREE.HemisphereLight(0xa8c8ea, 0x55603f, 1.5));
   }
 
   /**
@@ -229,7 +233,7 @@ export class Circuit {
     pmrem.dispose();
 
     this.scene.environment = target.texture;
-    this.scene.environmentIntensity = 0.85;
+    this.scene.environmentIntensity = 1.05;
     return target.texture;
   }
 

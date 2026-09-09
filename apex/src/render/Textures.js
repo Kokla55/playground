@@ -138,6 +138,10 @@ function set(maps, repeat) {
 /**
  * Asfalt: fint tilslag som korn, større flater med ulik slitasje, og en
  * ruhetsvariasjon som gjør at sollyset ikke treffer hele veien likt.
+ *
+ * Grunntonen ligger rundt 58 av 255. Lavere enn det ser riktig ut på en
+ * dataskjerm i et mørkt rom, men veien er den største flaten i bildet — blir
+ * den for mørk, ser hele spillet dunkelt ut på en telefon i dagslys.
  */
 export function asphaltMaps({ size = 512, anisotropy = 8, repeat = [5, 3.2] } = {}) {
   const grain = field(size, 4, 48, 12071, 0.62);
@@ -146,9 +150,9 @@ export function asphaltMaps({ size = 512, anisotropy = 8, repeat = [5, 3.2] } = 
 
   const map = paint(size, (x, y) => {
     const i = y * size + x;
-    let l = 39 + (grain[i] - 0.5) * 30 + (wear[i] - 0.5) * 14;
+    let l = 58 + (grain[i] - 0.5) * 34 + (wear[i] - 0.5) * 16;
     if (speck() > 0.988) l += 21;                 // enkeltsteiner som fanger lyset
-    l = Math.max(17, Math.min(82, l));
+    l = Math.max(28, Math.min(108, l));
     return [l * 0.98, l, l * 1.05];
   });
 
@@ -172,7 +176,7 @@ export function grassMaps({ size = 256, anisotropy = 4, repeat = [4, 3] } = {}) 
 
   const map = paint(size, (x, y) => {
     const i = y * size + x;
-    const l = 0.72 + (clump[i] - 0.5) * 0.5 + (patch[i] - 0.5) * 0.34;
+    const l = 0.84 + (clump[i] - 0.5) * 0.5 + (patch[i] - 0.5) * 0.34;
     return [clamp255(74 * l), clamp255(104 * l), clamp255(52 * l)];
   });
 
