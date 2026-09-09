@@ -26,6 +26,7 @@ export class VehicleInput {
     this.keys = { up: 0, down: 0, left: 0, right: 0, handbrake: 0 };
     this.pressed = new Set();
     this.gamepadIndex = null;
+    this.touch = null;
 
     // Utdata som fysikken leser.
     this.throttleRaw = 0;
@@ -51,8 +52,9 @@ export class VehicleInput {
     target.addEventListener('gamepadconnected', this._onGamepad);
   }
 
-  /** Sjekker og fjerner en engangshendelse (R, C, Esc). */
+  /** Sjekker og fjerner en engangshendelse (R, C, Esc — eller knapp på skjermen). */
   consume(action) {
+    if (this.touch && this.touch.consume(action)) return true;
     if (!this.pressed.has(action)) return false;
     this.pressed.delete(action);
     return true;
@@ -65,25 +67,40 @@ export class VehicleInput {
     let brake = this.keys.down;
     let steerTarget = this.keys.right - this.keys.left;
     let handbrake = this.keys.handbrake;
+    let analog = false;
 
     const pad = this._readGamepad();
     if (pad) {
       throttle = Math.max(throttle, pad.throttle);
       brake = Math.max(brake, pad.brake);
       handbrake = Math.max(handbrake, pad.handbrake);
-      if (Math.abs(pad.steer) > 0.02) steerTarget = pad.steer;
+      if (Math.abs(pad.steer) > 0.02) { steerTarget = pad.steer; analog = true; }
+    }
+
+    if (this.touch) {
+      throttle = Math.max(throttle, this.touch.throttle);
+      brake = Math.max(brake, this.touch.brake);
+      handbrake = Math.max(handbrake, this.touch.handbrake);
+      const touchSteer = this.touch.steering;
+      if (touchSteer !== null) { steerTarget = touchSteer; analog = true; }
     }
 
     this.throttleRaw = throttle;
     this.brakeRaw = brake;
     this.handbrake = handbrake;
 
-    // Rattet beveger seg med begrenset hastighet, og senterer raskere enn det
-    // legger på utslag. Uten dette blir tastaturstyring et digitalt av/på-signal.
     const s = this.cfg.steering;
-    const goingBack = steerTarget === 0 || Math.sign(steerTarget) !== Math.sign(this.steer);
-    const rate = (goingBack ? s.returnRate : s.rate) * dt;
-    this.steer += clamp(steerTarget - this.steer, -rate, rate);
+    if (analog) {
+      // Tommel og stikke er allerede proporsjonale — de trenger bare litt
+      // utjevning, ikke en kunstig rattfart som ville føltes treg.
+      this.steer += (steerTarget - this.steer) * Math.min(1, dt * 16);
+    } else {
+      // Tastatur gir bare av/på, så rattet får en fart å bevege seg med. Det
+      // senterer raskere enn det legger på utslag, slik ekte styring gjør.
+      const goingBack = steerTarget === 0 || Math.sign(steerTarget) !== Math.sign(this.steer);
+      const rate = (goingBack ? s.returnRate : s.rate) * dt;
+      this.steer += clamp(steerTarget - this.steer, -rate, rate);
+    }
     this.steer = clamp(this.steer, -1, 1);
   }
 

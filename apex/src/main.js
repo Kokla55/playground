@@ -8,16 +8,19 @@ import { CarModel } from './vehicle/CarModel.js';
 import { ChaseCamera, HoodCamera } from './camera/CameraRig.js';
 import { TestScene } from './world/TestScene.js';
 import { Hud } from './ui/Hud.js';
+import { TouchControls, hasTouch } from './ui/TouchControls.js';
 
 const FIXED_STEP = 1 / 120;
 
-function createRenderer(canvas) {
+function createRenderer(canvas, mobile) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: !mobile,
     powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Mobil-GPU-er har god oppløsning, men lite å gå på i fyllrate. Å tegne i
+  // full pikseltetthet på en telefon koster mer enn det synes.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -33,8 +36,9 @@ async function boot() {
   const physics = await Physics.create({ timestep: FIXED_STEP });
   status.textContent = 'BYGGER BANE';
 
-  const world = new TestScene(physics);
-  const renderer = createRenderer(document.getElementById('scene'));
+  const mobile = hasTouch();
+  const world = new TestScene(physics, { shadowMapSize: mobile ? 1024 : 2048 });
+  const renderer = createRenderer(document.getElementById('scene'), mobile);
   world.createEnvironment(renderer);
 
   const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.15, 5000);
@@ -44,6 +48,8 @@ async function boot() {
   world.scene.add(model.group);
 
   const input = new VehicleInput(CAR);
+  if (mobile) input.touch = new TouchControls();
+
   const cameras = [new ChaseCamera(camera), new HoodCamera(camera, CAR)];
   let cameraIndex = 0;
 

@@ -47,9 +47,10 @@ function skyDome(radius = 3000) {
 }
 
 export class TestScene {
-  constructor(physics) {
+  constructor(physics, { shadowMapSize = 2048 } = {}) {
     this.physics = physics;
     this.RAPIER = physics.RAPIER;
+    this.shadowMapSize = shadowMapSize;
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0xc4d2de, 320, 2200);
     this.dynamics = [];
@@ -69,7 +70,7 @@ export class TestScene {
     const sun = new THREE.DirectionalLight(0xfff3e0, 3.1);
     sun.position.set(120, 190, 90);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(this.shadowMapSize, this.shadowMapSize);
     sun.shadow.camera.near = 20;
     sun.shadow.camera.far = 620;
     const s = 130;

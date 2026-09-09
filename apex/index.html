@@ -2,7 +2,7 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0c10">
 <title>Apex GT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +12,8 @@
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
   font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  -webkit-tap-highlight-color:transparent}
+  touch-action:none;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none}
 canvas{display:block;width:100%;height:100%}
 
 #hud{position:fixed;inset:0;pointer-events:none;z-index:2;
@@ -73,7 +74,63 @@ canvas{display:block;width:100%;height:100%}
 #overlay.failed .bar{display:none}
 #overlay .err{font-size:11px;color:#ff8fa3;max-width:44ch;line-height:1.7;letter-spacing:.04em}
 
-#pause{position:fixed;inset:0;z-index:4;display:none;place-items:center;
+/* --- berøringsstyring --- */
+#touch{position:fixed;inset:0;z-index:3;display:none;touch-action:none;pointer-events:none}
+#touch.on{display:block}
+#touch>*{pointer-events:auto}
+#touch-steer{position:absolute;left:0;bottom:0;width:52%;height:62%;touch-action:none}
+#touch-track{position:absolute;left:20px;bottom:calc(20px + env(safe-area-inset-bottom));
+  width:150px;height:52px;border-radius:26px;border:1px solid rgba(232,237,242,.18);
+  background:rgba(9,13,20,.42);display:grid;place-items:center;transition:border-color .12s}
+#touch-steer.down #touch-track{border-color:rgba(110,231,255,.55)}
+#touch-knob{width:40px;height:40px;border-radius:50%;background:rgba(110,231,255,.24);
+  border:1px solid rgba(110,231,255,.6);transition:transform .05s linear}
+#touch-hint{position:absolute;left:20px;bottom:calc(78px + env(safe-area-inset-bottom));
+  font-size:9px;letter-spacing:.16em;color:#5c6675}
+
+.pedal{position:absolute;border-radius:50%;display:grid;place-items:center;touch-action:none;
+  font:inherit;font-size:10px;letter-spacing:.1em;color:#9fb0c4;
+  background:rgba(9,13,20,.5);border:1px solid rgba(232,237,242,.2);transition:background .1s,border-color .1s}
+.pedal.down{background:rgba(110,231,255,.22);border-color:rgba(110,231,255,.7);color:#e8edf2}
+#touch-gas{right:calc(18px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));
+  width:104px;height:104px;border-color:rgba(84,240,184,.34);color:#54f0b8}
+#touch-gas.down{background:rgba(84,240,184,.24);border-color:rgba(84,240,184,.8)}
+#touch-brake{right:calc(134px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));
+  width:82px;height:82px;border-color:rgba(255,84,112,.34);color:#ff8fa3}
+#touch-brake.down{background:rgba(255,84,112,.24);border-color:rgba(255,84,112,.8)}
+#touch-hand{right:calc(150px + env(safe-area-inset-right));bottom:calc(112px + env(safe-area-inset-bottom));
+  width:62px;height:62px;font-size:9px}
+
+.tbtn{position:absolute;top:calc(14px + env(safe-area-inset-top));width:44px;height:34px;
+  border-radius:8px;display:grid;place-items:center;font:inherit;font-size:9px;letter-spacing:.1em;
+  color:#8d99a8;background:rgba(9,13,20,.5);border:1px solid rgba(232,237,242,.16)}
+.tbtn.down{background:rgba(110,231,255,.2);color:#e8edf2}
+#touch-cam{right:calc(16px + env(safe-area-inset-right))}
+#touch-reset{right:calc(66px + env(safe-area-inset-right))}
+#touch-pause{right:calc(116px + env(safe-area-inset-right))}
+
+/* På smal skjerm tar HUD-en mindre plass og flytter seg vekk fra tomlene. */
+@media (max-width:860px), (max-height:520px){
+  #hud-speed{font-size:46px}
+  #hud-gear{font-size:30px;width:34px}
+  #hud-gauge{right:16px;bottom:auto;top:calc(56px + env(safe-area-inset-top));
+    right:calc(16px + env(safe-area-inset-right))}
+  #hud-rpm{width:190px;bottom:auto;top:calc(122px + env(safe-area-inset-top));
+    right:calc(16px + env(safe-area-inset-right))}
+  #hud-keys{display:none}
+  #hud-tel{left:calc(12px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));
+    font-size:9px;padding:8px 10px;gap:2px 10px}
+  #hud-tel dt{font-size:8px}
+}
+
+/* Portrett er spillbart, men trangt — et hint, ikke en sperre. */
+#rotate{position:fixed;z-index:4;left:50%;transform:translateX(-50%);
+  top:calc(10px + env(safe-area-inset-top));display:none;pointer-events:none;
+  padding:7px 14px;border-radius:999px;font-size:10px;letter-spacing:.14em;color:#9fb0c4;
+  background:rgba(9,13,20,.78);border:1px solid rgba(232,237,242,.14)}
+@media (pointer:coarse) and (orientation:portrait){ #rotate{display:block} }
+
+#pause{position:fixed;inset:0;z-index:5;display:none;place-items:center;
   background:rgba(10,12,16,.78)}
 #pause.on{display:grid}
 #pause h2{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:600;
@@ -112,6 +169,21 @@ canvas{display:block;width:100%;height:100%}
     <div id="hud-gear">1</div>
   </div>
 </div>
+
+<div id="touch">
+  <div id="touch-steer">
+    <div id="touch-hint">DRA FOR Å STYRE</div>
+    <div id="touch-track"><div id="touch-knob"></div></div>
+  </div>
+  <button class="pedal" id="touch-gas">GASS</button>
+  <button class="pedal" id="touch-brake">BREMS</button>
+  <button class="pedal" id="touch-hand">HÅND</button>
+  <button class="tbtn" id="touch-cam">KAM</button>
+  <button class="tbtn" id="touch-reset">RESET</button>
+  <button class="tbtn" id="touch-pause">II</button>
+</div>
+
+<div id="rotate">SNU TELEFONEN FOR BEDRE UTSIKT</div>
 
 <div id="pause"><h2>PAUSE</h2></div>
 
