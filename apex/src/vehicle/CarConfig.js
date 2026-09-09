@@ -23,23 +23,36 @@ const REAR_TIRE = {
   By: 8.6, Cy: 1.40, Ey: -0.5,
 };
 
+// Fjæringen bærer bilen ved en bestemt sammentrykking, ikke ved null. restLength
+// er derfor hvilelengden PLUSS den statiske sammentrykkingen: da står bilen i
+// riktig kjørehøyde med 135 mm fjæringsvei igjen. Ytterhjulet i en 1,18 g-sving
+// bruker rundt 93 mm av det, så fjæra rekker fram uten å slå i bunn.
+//
+// Var dette feil, kjørte bilen permanent utbunnet. Da sluttet fjærkraften å
+// vokse, tyngdekraften vant, og karosseriet la seg ned på asfalten midt i en
+// sving — det føltes som en usynlig vegg. bumpStop er sikkerhetsnettet: en
+// progressiv gummistopp som tar imot når fjæringsveien virkelig er oppbrukt.
 const FRONT_SUSPENSION = {
-  restLength: 0.34,
-  maxBump: 0.13,
+  restLength: 0.391,
+  maxBump: 0.19,
   maxDroop: 0.11,
-  stiffness: 49000,
-  dampBump: 3100,
+  stiffness: 51000,      // 2.1 Hz fjærfrekvens — fast, men ikke rå
+  dampBump: 2700,
   dampRebound: 4600,
+  bumpStop: 420000,
+  bumpStopDamp: 9000,
   antiRoll: 24000,
 };
 
 const REAR_SUSPENSION = {
-  restLength: 0.34,
-  maxBump: 0.13,
+  restLength: 0.391,
+  maxBump: 0.19,
   maxDroop: 0.11,
-  stiffness: 57000,
+  stiffness: 70000,      // bakakselen bærer 58 % av vekten og må være stivere
   dampBump: 3500,
-  dampRebound: 5200,
+  dampRebound: 6100,
+  bumpStop: 560000,
+  bumpStopDamp: 12000,
   antiRoll: 15000,
 };
 
@@ -56,8 +69,14 @@ export const CAR = {
   // fordi massen sitter samlet i midten.
   inertia: { x: 1620, y: 2050, z: 520 },
 
-  // Kollisjonsboks, plassert relativt til tyngdepunktet (origo).
-  collider: { hx: 0.92, hy: 0.52, hz: 2.16, offsetY: 0.30, offsetZ: 0.00 },
+  // Kollisjonsboksen skal fange opp rekkverk og andre biler — aldri bakken.
+  // Hjulene og fjæringen tar all kontakt med veien.
+  //
+  // Boksen følger karosseriet som tegnes — 4.5 m langt, 2.1 m bredt — men
+  // gulvet er hevet: den går fra 0.38 til 1.36 m over veibanen i hvile. Selv med
+  // fjæringen i bunn og ti graders krengning ligger nederste hjørne 12 cm
+  // klar av asfalten, så kollisjonsløseren får aldri avgjøre farten i en sving.
+  collider: { hx: 0.95, hy: 0.49, hz: 2.15, offsetY: 0.41, offsetZ: 0.00 },
 
   wheelRadius: WHEEL_RADIUS,
   wheelWidth: 0.30,

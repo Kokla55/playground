@@ -5,6 +5,9 @@ import { SURFACES } from './CarConfig.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+// Gummistoppen dobler stivheten for hver 2 cm den trykkes sammen.
+const BUMP_STOP_KNEE = 0.02;
+
 // Gjenbrukte vektorer — fysikken kjører 120 ganger i sekundet og skal ikke
 // produsere søppel for garbage collectoren.
 const _pos = new THREE.Vector3();
@@ -95,6 +98,7 @@ export class Vehicle {
       wheelCenter: new THREE.Vector3(),
       suspensionLength: wcfg.restLength,
       compression: 0,
+      overTravel: 0,
       load: 0,
       omega: 0,
       spin: 0,
@@ -242,6 +246,7 @@ export class Vehicle {
         w.grounded = false;
         w.load = 0;
         w.compression = 0;
+        w.overTravel = 0;
         w.saturation = 0;
         w.suspensionLength = c.restLength + c.maxDroop;
         w.wheelCenter.copy(_attach).addScaledVector(_down, w.suspensionLength);
@@ -253,13 +258,14 @@ export class Vehicle {
       w.normal.set(hit.normal.x, hit.normal.y, hit.normal.z);
       w.surface = this.physics.surfaceOf(hit.collider.handle);
 
-      const length = clamp(
-        toi - cfg.wheelRadius,
-        c.restLength - c.maxBump,
-        c.restLength + c.maxDroop,
-      );
+      const raw = toi - cfg.wheelRadius;
+      const shortest = c.restLength - c.maxBump;
+      const length = clamp(raw, shortest, c.restLength + c.maxDroop);
       w.suspensionLength = length;
       w.compression = c.restLength - length;
+      // Hvor langt karosseriet har presset seg forbi fjæringens bunn. Fjæra
+      // slutter å vokse her; gummistoppen tar over.
+      w.overTravel = Math.max(0, shortest - raw);
       w.wheelCenter.copy(_attach).addScaledVector(_down, length);
       w.contactPoint.copy(w.wheelCenter).addScaledVector(_down, cfg.wheelRadius);
     }
@@ -282,10 +288,20 @@ export class Vehicle {
       const compressionRate = -_pv.dot(_up);
       const damping = compressionRate > 0 ? w.cfg.dampBump : w.cfg.dampRebound;
 
-      const force = Math.max(
+      let force = Math.max(
         0,
         w.cfg.stiffness * w.compression + damping * compressionRate + arb * sign,
       );
+
+      // Gummistoppen er progressiv: den blir raskt stivere jo dypere den
+      // trykkes, akkurat som en ekte bumpstopp. Noen få millimeter holder
+      // hele bilens vekt, så karosseriet når aldri asfalten.
+      if (w.overTravel > 0) {
+        const d = w.overTravel;
+        force += w.cfg.bumpStop * d * (1 + d / BUMP_STOP_KNEE);
+        if (compressionRate > 0) force += w.cfg.bumpStopDamp * compressionRate;
+      }
+
       w.load = force;
 
       _force.copy(_up).multiplyScalar(force);

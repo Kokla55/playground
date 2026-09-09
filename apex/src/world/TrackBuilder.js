@@ -11,11 +11,16 @@ import * as THREE from 'three';
  * fysikk i det hele tatt.
  */
 
-const SHOULDER = 13.0;     // gress fra asfaltkant til rekkverk
+const SHOULDER = 13.0;      // gress fra asfaltkant til rekkverk
+const BEHIND_BARRIER = 2.0; // og videre bak muren, så bakken aldri tar slutt
 const KERB_WIDTH = 1.7;
 const KERB_HEIGHT = 0.055;
 const KERB_RADIUS = 250;   // curbs legges der svingen er trangere enn dette
-const BARRIER_HEIGHT = 0.92;
+// 28 cm gravd ned, 1.82 m over veien. Var muren lavere enn karosseriets
+// kollisjonsboks (overkant 1.34 m), traff bilen toppkanten i stedet for veggen:
+// kontaktnormalen pekte oppover, og bilen ble vippet 3,6 m til værs og over.
+// En vegg som stopper en bil må rekke godt over taket på den.
+const BARRIER_HEIGHT = 2.10;
 const BARRIER_THICKNESS = 0.22;
 
 /** Hvor på runden start- og målstreken ligger: et stykke ut på rettstrekket. */
@@ -104,11 +109,14 @@ export function buildTrack(path, physics) {
   physics.addStatic(colliderFrom(roadGeo, RAPIER).setFriction(1), { surface: 'asphalt' });
 
   // --- skulder: gresset mellom asfalt og rekkverk ---
+  // Gresset fortsetter et stykke FORBI rekkverket. Sluttet det ved muren, hang
+  // et hjul som berørte veggen halvt ut over ingenting, og bilen falt ned i
+  // tomrommet i stedet for å skrape langs rekkverket.
   for (const sign of [-1, 1]) {
     const geo = ribbon(path,
       (f) => sign * f.halfWidth,
-      (f) => sign * (f.halfWidth + SHOULDER),
-      () => -0.02, () => -0.28,
+      (f) => sign * (f.halfWidth + SHOULDER + BEHIND_BARRIER),
+      () => -0.02, () => -0.34,
       { uvRepeat: 12 });
     const mesh = new THREE.Mesh(geo, grass);
     mesh.receiveShadow = true;

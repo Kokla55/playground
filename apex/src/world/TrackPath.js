@@ -38,6 +38,9 @@ const CONTROL = [
 ];
 
 /** Banebredde varierer: bredest på hovedrettstrekket, smalere i hårnålen. */
+// Doseringen og bredden glattes over denne lengden av banen.
+const SMOOTH_METRES = 32;
+
 const WIDTH_MIN = 10.5;
 const WIDTH_MAX = 15.0;
 
@@ -76,6 +79,41 @@ export class TrackPath {
     }
     this.length = length;
 
+    // Krumning ut fra retningsendringen over ett steg. Rå er den full av støy:
+    // Catmull-Rom-kurven er glatt i posisjon, men ikke i andrederivert.
+    const raw = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const p = pts[i];
+      _prev.copy(pts[(i - 1 + n) % n]);
+      _next.copy(pts[(i + 1) % n]);
+      const a = Math.atan2(_next.x - p.x, _next.z - p.z);
+      const b = Math.atan2(p.x - _prev.x, p.z - _prev.z);
+      let dTheta = a - b;
+      while (dTheta > Math.PI) dTheta -= Math.PI * 2;
+      while (dTheta < -Math.PI) dTheta += Math.PI * 2;
+      const ds = _next.distanceTo(_prev) * 0.5;
+      raw[i] = ds > 1e-6 ? dTheta / ds : 0;
+    }
+
+    // Glattet over rundt tretti meter. Både doseringen og banebredden utledes
+    // av krumningen, så støyen der ble til ekte humper i asfalten: på det
+    // verste løftet banekanten seg 15 cm på to meter, nok til å slå fjæringen
+    // i bunn i full fart. Doseringen skal bygge seg opp gjennom innkjøringen,
+    // slik den gjør på en ekte bane.
+    const half = Math.max(1, Math.round(SMOOTH_METRES / (length / n) / 2));
+    const curvatures = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      let sum = 0, weight = 0;
+      for (let k = -half; k <= half; k++) {
+        // Kosinusvekt: naboene teller mindre jo lenger unna de er, så
+        // hårnålen beholder formen sin i stedet for å bli smurt ut.
+        const w = 0.5 + 0.5 * Math.cos((Math.PI * k) / (half + 1));
+        sum += raw[((i + k) % n + n) % n] * w;
+        weight += w;
+      }
+      curvatures[i] = sum / weight;
+    }
+
     for (let i = 0; i < n; i++) {
       const p = pts[i];
       _prev.copy(pts[(i - 1 + n) % n]);
@@ -84,14 +122,7 @@ export class TrackPath {
       // Tangent fra nabopunktene — jevnere enn kurvens egen derivert.
       _t.subVectors(_next, _prev).normalize();
 
-      // Krumning ut fra retningsendringen over ett steg.
-      const a = Math.atan2(_next.x - p.x, _next.z - p.z);
-      const b = Math.atan2(p.x - _prev.x, p.z - _prev.z);
-      let dTheta = a - b;
-      while (dTheta > Math.PI) dTheta -= Math.PI * 2;
-      while (dTheta < -Math.PI) dTheta += Math.PI * 2;
-      const ds = _next.distanceTo(_prev) * 0.5;
-      const curvature = ds > 1e-6 ? dTheta / ds : 0;
+      const curvature = curvatures[i];
 
       // Høyre-vektor i planet. Doseringen vipper tverrsnittet inn mot svingen.
       const right = new THREE.Vector3(_t.z, 0, -_t.x).normalize();
