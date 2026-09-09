@@ -108,9 +108,17 @@ export class CockpitModel {
     const o = cfg.ridePoint;
     const y = (aboveGround) => aboveGround - o;
 
-    // Øyehøyde 1.10 m over bakken. Instrumentbrettet ligger godt under
-    // sikteliniën, og taket er hevet slik at det ikke kutter horisonten.
-    this.eye = new THREE.Vector3(DRIVER_X, y(1.10), -0.05);
+    // Øyehøyde 1.18 m over bakken.
+    //
+    // Målt: hvor mye av skjermen kupeen dekker avhenger nesten bare av denne
+    // høyden. Å flytte øyet framover mot frontruta gjorde det verre — da fyller
+    // instrumentbrettet og panseret mer — mens hver centimeter oppover gir
+    // synlig mer vei. På 1.10 dekket kupeen 74 % av en bred telefonskjerm; på
+    // 1.18 er det 63 %, og utsikten rett fram gikk fra 29 til 38 %.
+    //
+    // Høyere enn dette går hodet gjennom taket: innsiden av taket ligger rundt
+    // 1.30, og en fører sitter en drøy håndsbredd under det.
+    this.eye = new THREE.Vector3(DRIVER_X, y(1.18), -0.05);
 
     const m = {
       dash: new THREE.MeshStandardMaterial({ color: 0x14171c, roughness: 0.88, metalness: 0.05 }),
