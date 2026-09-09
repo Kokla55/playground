@@ -55,6 +55,11 @@ export class Vehicle {
 
     const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(spawn.x, spawn.y, spawn.z)
+      // Startretningen kommer fra banen, så bilen står riktig vei på rutenettet.
+      .setRotation(spawn.q ?? { x: 0, y: 0, z: 0, w: 1 })
+      // I 300 km/t flytter bilen seg over en halv meter per fysikksteg. Uten
+      // kontinuerlig kollisjonssjekk kan den passere rett gjennom rekkverket.
+      .setCcdEnabled(true)
       .setLinearDamping(0)
       .setAngularDamping(0.06)
       .setCanSleep(false);

@@ -49,7 +49,8 @@ src/
              CarModel (karosseri), CockpitModel (interiør)
   camera/    CameraRig (cockpit og forfølgende)
   render/    Mirrors
-  world/     TestScene
+  world/     TrackPath (senterlinje), TrackBuilder (asfalt, curbs, rekkverk),
+             Terrain (landskap og vegetasjon), Circuit (setter alt sammen)
   ui/        Hud, TouchControls
 ```
 
@@ -91,7 +92,8 @@ Verifisert automatisk i Chromium med fast tidssteg:
 | Bremselengde 100–0 | 39,3 m |
 | Maks sideakselerasjon | 1,27 g |
 | Vektfordeling i ro | 42/58 foran/bak |
-| Vektforskyvning ved 1,16 g brems | 3125 N framover (teori: 2729 N) |
+| Vektforskyvning ved 1,16 g brems | 3079 N framover (teori: 2729 N) |
+| Luftmotstand ved 80 m/s | 2,08 m/s² retardasjon |
 
 ## Kameraer og speil
 
@@ -112,13 +114,47 @@ utjevning som følger et mål i fart ligger permanent etter med farten ganget me
 tidskonstanten — ved 270 km/t ble det tretten meter, og bilen krympet til en
 prikk. Nå følger avstanden bilen nøyaktig, mens bare dreiningen henger etter.
 
+## Banen
+
+En lukket rundbane på **2775 meter** med en senterlinje som all annen geometri
+utledes av — asfalt, curbs, skulder, rekkverk og terrenghøyde. Da kan de aldri
+komme i utakt med hverandre.
+
+| | |
+| --- | --- |
+| Lengde | 2775 m |
+| Minste radius | 24 m (den langsomme venstresvingen) |
+| Største radius | over 2000 m (hovedrettstrekket, 400 m) |
+| Høydeforskjell | 11 m |
+| Bratteste stigning | 2,8 % |
+| Dosering | opptil 8° inn mot svingen |
+
+Layouten går fra et langt rettstrekk inn i en rask stigende høyre, over toppen
+og ned gjennom to esser, opp mot banens høyeste punkt, og til slutt ned en lang
+bakke inn i den langsomme svingen som leder tilbake på rettstrekket. Banen er
+bredest på rettstrekket og smalner inn der svingene er trangest.
+
+**Curbene** legges automatisk der radien er under 250 m, og tones inn og ut med
+hvor trang svingen er. De er et eget underlag med litt mindre grep, så du kjenner
+når du legger hjulet på dem.
+
+**Rekkverket** står 13 meter utenfor asfaltkanten hele veien rundt og lukker
+banen inne. Det er derfor terrenget utenfor ikke trenger fysikk i det hele tatt,
+og kan være stort og detaljert gratis.
+
+**Landskapet** binder seg til banen: like utenfor asfalten følger terrenget
+veibanen nøyaktig, og først lenger ute får det lov til å bølge og reise seg i
+fjell med snø på toppene. 2200 trær og 520 steiner er strødd ut der bakken ikke
+er for bratt.
+
 ## Status
 
 - [x] **Fase 0** — kartlegging av miljø og teknologivalg
 - [x] **Fase 1** — kjørbar bil med realistisk fysikk, testbane, HUD
 - [x] **Fase 2** — cockpit med ratt, instrumenter og tre ekte speil; forfølgende
       kamera med dynamisk synsvinkel, skjelv og helning inn i svingen
-- [ ] **Fase 3** — ordentlig testbane med curbs, rekkverk og høydeforskjeller
+- [x] **Fase 3** — 2775 m rundbane med curbs, rekkverk, høydeforskjeller,
+      dosering, skog, fjell og terreng som binder seg til banen
 - [ ] **Fase 4** — grafikk: materialer, refleksjoner, etterbehandling.
       Ekte fartsuskarphet hører hjemme her: et forsøk på radiell uskarphet
       gjennom `EffectComposer` konverterte fargerommet to ganger og vasket ut

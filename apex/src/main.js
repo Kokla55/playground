@@ -8,7 +8,7 @@ import { CarModel } from './vehicle/CarModel.js';
 import { CockpitModel, COCKPIT_LAYER } from './vehicle/CockpitModel.js';
 import { ChaseCamera, CockpitCamera } from './camera/CameraRig.js';
 import { Mirrors } from './render/Mirrors.js';
-import { TestScene } from './world/TestScene.js';
+import { Circuit } from './world/Circuit.js';
 import { Hud } from './ui/Hud.js';
 import { TouchControls, hasTouch } from './ui/TouchControls.js';
 
@@ -39,7 +39,7 @@ async function boot() {
   status.textContent = 'BYGGER BANE';
 
   const mobile = hasTouch();
-  const world = new TestScene(physics, { shadowMapSize: mobile ? 1024 : 2048 });
+  const world = new Circuit(physics, { shadowMapSize: mobile ? 1024 : 2048 });
   const renderer = createRenderer(document.getElementById('scene'), mobile);
   world.createEnvironment(renderer);
 
