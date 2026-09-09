@@ -57,6 +57,15 @@ async function boot() {
   });
   const trackEl = document.getElementById('hud-track');
   if (trackEl) trackEl.textContent = world.path.name;
+
+  // Banenavnet som et kort anslag. På mobil er telemetripanelet skjult, og
+  // dette er da eneste stedet man får vite hvilken bane man kjører.
+  const banner = document.getElementById('banner');
+  if (banner) {
+    banner.textContent = world.path.name;
+    requestAnimationFrame(() => banner.classList.add('on'));
+    setTimeout(() => banner.classList.remove('on'), 2600);
+  }
   const nesteBane = () => {
     const i = TRACKS.findIndex((t) => t.id === valgtBane);
     location.hash = TRACKS[(i + 1) % TRACKS.length].id;

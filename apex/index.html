@@ -125,22 +125,50 @@ html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
 .tbtn.av{color:#5c6675;border-color:rgba(232,237,242,.08)}
 
 /* På smal skjerm tar HUD-en mindre plass og flytter seg vekk fra tomlene. */
+/* På en telefon er skjermen selve spillet. Målt dekket HUD-en 59 % av en
+   740x340-skjerm mot 10 % på desktop — telemetripanelet alene tok 27 % av
+   bredden. Det er utviklerinfo, og den viker: banenavnet vises som et kort
+   anslag ved start, lyden ser du på LYD-knappen, og resten er borte.
+   Fart, turtall og kart blir igjen, fordi det er dem man kjører etter. */
 @media (max-width:860px), (max-height:520px){
-  #hud-speed{font-size:46px}
-  #hud-gear{font-size:30px;width:34px}
-  #hud-gauge{right:16px;bottom:auto;top:calc(56px + env(safe-area-inset-top));
-    right:calc(16px + env(safe-area-inset-right))}
-  #hud-rpm{width:190px;bottom:auto;top:calc(122px + env(safe-area-inset-top));
-    right:calc(16px + env(safe-area-inset-right))}
-  #hud-keys{display:none}
-  #hud-tel{left:calc(12px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));
-    font-size:9px;padding:8px 10px;gap:2px 10px}
-  #hud-tel dt{font-size:8px}
+  #hud-speed{font-size:38px}
+  #hud-gear{font-size:26px;width:30px;padding:3px 0 1px}
+  #hud-unit{font-size:9px;letter-spacing:.16em;padding-bottom:4px}
+  #hud-gauge{bottom:auto;top:calc(48px + env(safe-area-inset-top));gap:9px;
+    right:calc(12px + env(safe-area-inset-right))}
+  #hud-rpm{width:150px;bottom:auto;top:calc(100px + env(safe-area-inset-top));
+    right:calc(12px + env(safe-area-inset-right))}
+  #hud-rpm-ticks,#hud-rpm-label{display:none}
+  #hud-keys,#hud-tel{display:none}
+
   /* Nede til venstre ligger rattflaten på mobil, så kartet flytter opp. */
-  #hud-map{left:50%;transform:translateX(-50%);bottom:auto;
-    top:calc(10px + env(safe-area-inset-top));width:92px}
-  #map-info{font-size:8px;margin-top:3px}
+  #hud-map{left:calc(12px + env(safe-area-inset-left));bottom:auto;
+    top:calc(12px + env(safe-area-inset-top));width:64px}
+  #map-info{font-size:7px;margin-top:2px;gap:4px;white-space:nowrap;
+    justify-content:center;overflow:hidden}
+  #map-info span:first-child{display:none}
+
+  .tbtn{width:36px;height:26px;font-size:8px;border-radius:6px}
+  #touch-cam{right:calc(12px + env(safe-area-inset-right))}
+  #touch-reset{right:calc(53px + env(safe-area-inset-right))}
+  #touch-mute{right:calc(94px + env(safe-area-inset-right))}
+  #touch-circuit{right:calc(135px + env(safe-area-inset-right))}
+  #touch-pause{right:calc(176px + env(safe-area-inset-right))}
+
+  #touch-gas{width:88px;height:88px}
+  #touch-brake{width:70px;height:70px;right:calc(114px + env(safe-area-inset-right))}
+  #touch-hand{width:54px;height:54px;right:calc(126px + env(safe-area-inset-right));
+    bottom:calc(96px + env(safe-area-inset-bottom))}
 }
+
+/* Banenavnet ved start: der et øyeblikk, så borte. */
+#banner{position:fixed;z-index:4;left:50%;transform:translateX(-50%);
+  top:calc(18px + env(safe-area-inset-top));pointer-events:none;
+  font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:600;
+  font-size:clamp(1.1rem,3.4vmin,1.8rem);letter-spacing:.34em;text-indent:.34em;
+  color:#e8edf2;text-shadow:0 2px 20px rgba(0,0,0,.8);
+  opacity:0;transition:opacity .5s ease}
+#banner.on{opacity:1}
 
 /* Portrett er spillbart, men trangt — et hint, ikke en sperre. */
 #rotate{position:fixed;z-index:4;left:50%;transform:translateX(-50%);
@@ -213,6 +241,8 @@ html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
   <button class="tbtn" id="touch-circuit">BANE</button>
   <button class="tbtn" id="touch-pause">II</button>
 </div>
+
+<div id="banner"></div>
 
 <div id="rotate">SNU TELEFONEN FOR BEDRE UTSIKT</div>
 
