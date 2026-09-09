@@ -19,7 +19,15 @@ const SUN_COLOUR = 0xfff3e0;
 const SUN_INTENSITY = 3.1;
 
 // Hvor dypt hvert skyggekart rekker, i meter fra kameraet.
-const SHADOW_SPLITS = [14, 55, 260];
+// Det MÅ være nøyaktig like mange grenser som kaskader. Er det flere, bygger
+// CSM et frustum uten lys og krasjer på oppstart — slik mobil gjorde da denne
+// listen alltid hadde tre verdier mens telefonen kjørte to kaskader.
+const SHADOW_SPLITS = {
+  1: [260],
+  2: [22, 260],
+  3: [14, 55, 260],
+  4: [10, 30, 90, 260],
+};
 
 /**
  * Himmelen er én kuppel med en gradient — og nå med sola i den.
@@ -170,7 +178,11 @@ export class Circuit {
       // første kartet dekker bare bilen og asfalten rundt den.
       mode: 'custom',
       customSplitsCallback: (antall, near, far, breaks) => {
-        for (const d of SHADOW_SPLITS) breaks.push(Math.min(d, far) / far);
+        // Faller tilbake på jevn fordeling om noen ber om et antall vi ikke
+        // har grenser for, slik at det aldri blir feil antall.
+        const meter = SHADOW_SPLITS[antall]
+          ?? Array.from({ length: antall }, (_, i) => (far * (i + 1)) / antall);
+        for (let i = 0; i < antall; i++) breaks.push(Math.min(meter[i], far) / far);
         breaks[antall - 1] = 1;
       },
       shadowMapSize,
