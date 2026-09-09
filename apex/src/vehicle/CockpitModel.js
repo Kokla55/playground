@@ -41,61 +41,58 @@ class InstrumentCluster {
     this.texture.needsUpdate = true;
   }
 
+  /**
+   * Rattkransen skjærer over den nedre halvdelen av displayet sett fra
+   * førersetet. Derfor ligger fart, gir og turtellerstolpe i øvre del, og bare
+   * de sekundære tallene nederst der de kan bli dekket.
+   */
   draw(t) {
     const c = this.ctx;
     const W = this.canvas.width;
     const H = this.canvas.height;
     const redline = this.cfg.engine.redline;
+    const limiter = t.rpm >= this.cfg.engine.upshiftRpm;
 
     c.fillStyle = '#05070b';
     c.fillRect(0, 0, W, H);
 
-    const cx = W * 0.42, cy = H * 0.66, r = 92;
-    const start = Math.PI * 1.06, sweep = Math.PI * 0.88;
-
-    c.lineWidth = 14;
-    c.lineCap = 'butt';
-    c.strokeStyle = 'rgba(160,180,205,.16)';
-    c.beginPath();
-    c.arc(cx, cy, r, start, start + sweep);
-    c.stroke();
-
-    const frac = Math.min(t.rpm / redline, 1);
-    const limiter = t.rpm >= this.cfg.engine.upshiftRpm;
-    c.strokeStyle = limiter ? '#ff5470' : '#6ee7ff';
-    c.beginPath();
-    c.arc(cx, cy, r, start, start + sweep * frac);
-    c.stroke();
-
-    c.strokeStyle = 'rgba(200,215,235,.45)';
-    c.lineWidth = 2;
-    for (let i = 0; i <= 8; i++) {
-      const a = start + sweep * (i / 8);
-      c.beginPath();
-      c.moveTo(cx + Math.cos(a) * (r - 22), cy + Math.sin(a) * (r - 22));
-      c.lineTo(cx + Math.cos(a) * (r - 11), cy + Math.sin(a) * (r - 11));
-      c.stroke();
-    }
-
-    c.textAlign = 'center';
-    c.fillStyle = '#eaf1f8';
-    c.font = '600 82px "Barlow Condensed", system-ui, sans-serif';
-    c.fillText(String(Math.round(Math.abs(t.speedKmh))), cx, cy - 6);
-
-    c.font = '500 16px "IBM Plex Mono", monospace';
-    c.fillStyle = '#7e8b9b';
-    c.fillText('KM/T', cx, cy + 22);
-
+    // Turtellerstolpe langs toppen.
+    const bx = 26, by = 16, bw = W - 52, bh = 16;
+    c.fillStyle = 'rgba(160,180,205,.16)';
+    c.fillRect(bx, by, bw, bh);
     c.fillStyle = limiter ? '#ff5470' : '#6ee7ff';
-    c.font = '600 92px "Barlow Condensed", system-ui, sans-serif';
-    c.fillText(t.gear === 0 ? 'R' : String(t.gear), W * 0.84, cy + 6);
+    c.fillRect(bx, by, bw * Math.min(t.rpm / redline, 1), bh);
 
-    c.fillStyle = '#7e8b9b';
-    c.font = '500 15px "IBM Plex Mono", monospace';
-    c.textAlign = 'left';
-    c.fillText(`${Math.round(t.rpm)} RPM`, 26, 36);
+    c.fillStyle = 'rgba(255,84,112,.55)';
+    c.fillRect(bx + bw * (this.cfg.engine.upshiftRpm / redline), by - 3, 2, bh + 6);
+
+    c.fillStyle = 'rgba(200,215,235,.35)';
+    for (let i = 1; i < 8; i++) c.fillRect(bx + (bw * i) / 8, by + bh + 3, 1, 5);
+
+    // Fart, stort og høyt oppe.
     c.textAlign = 'right';
-    c.fillText(`${t.gLat >= 0 ? '+' : ''}${t.gLat.toFixed(2)} G`, W - 26, 36);
+    c.fillStyle = '#eaf1f8';
+    c.font = '600 100px "Barlow Condensed", system-ui, sans-serif';
+    c.fillText(String(Math.round(Math.abs(t.speedKmh))), 268, 132);
+
+    c.textAlign = 'left';
+    c.font = '500 17px "IBM Plex Mono", monospace';
+    c.fillStyle = '#7e8b9b';
+    c.fillText('KM/T', 280, 132);
+
+    // Gir, like høyt.
+    c.textAlign = 'center';
+    c.fillStyle = limiter ? '#ff5470' : '#6ee7ff';
+    c.font = '600 108px "Barlow Condensed", system-ui, sans-serif';
+    c.fillText(t.gear === 0 ? 'R' : String(t.gear), W - 74, 136);
+
+    // Sekundære tall nederst — her kan rattet gjerne dekke.
+    c.fillStyle = '#7e8b9b';
+    c.font = '500 16px "IBM Plex Mono", monospace';
+    c.textAlign = 'left';
+    c.fillText(`${Math.round(t.rpm)} RPM`, 26, 214);
+    c.textAlign = 'right';
+    c.fillText(`${t.gLat >= 0 ? '+' : ''}${t.gLat.toFixed(2)} G`, W - 26, 214);
   }
 }
 
@@ -150,13 +147,13 @@ export class CockpitModel {
 
     // Instrumenthuset er vippet mot føreren, og skjermen henger i det, slik at
     // de aldri kan komme i utakt med hverandre.
-    const binnacle = box(0.48, 0.26, 0.20, m.trim);
-    binnacle.position.set(DRIVER_X, y(0.86), 0.74);
+    const binnacle = box(0.50, 0.27, 0.20, m.trim);
+    binnacle.position.set(DRIVER_X, y(0.91), 0.74);
     binnacle.rotation.x = -0.17;
     this.group.add(binnacle);
 
     const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.40, 0.20),
+      new THREE.PlaneGeometry(0.42, 0.21),
       new THREE.MeshBasicMaterial({
         map: this.cluster.texture, toneMapped: false, side: THREE.DoubleSide,
       }),
@@ -171,7 +168,7 @@ export class CockpitModel {
     // Rattet sitter i en gruppe som er vippet som en rattstamme. Selve rattet
     // snurrer om sin egen akse inni den.
     const column = new THREE.Group();
-    column.position.set(DRIVER_X, y(0.72), 0.50);
+    column.position.set(DRIVER_X, y(0.66), 0.50);
     column.rotation.x = 0.40;
     this.group.add(column);
 
