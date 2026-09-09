@@ -23,7 +23,7 @@ const SURFACES = {
 };
 
 export class Audio {
-  constructor(cfg, { volume = 0.75 } = {}) {
+  constructor(cfg, { volume = 0.92 } = {}) {
     this.cfg = cfg;
     this.volume = volume;
     this.muted = false;
@@ -34,6 +34,7 @@ export class Audio {
     this._prevSpeed = 0;
     this._bumped = [false, false, false, false];
     this._skid = 0;
+    this._unlocked = false;
   }
 
   /** Bygger lydkjeden. Må kalles fra en ekte brukerhandling. */
@@ -100,8 +101,44 @@ export class Audio {
     return true;
   }
 
-  resume() {
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  /** Kjører lyden akkurat nå? Det er dette som avgjør om du hører noe. */
+  get running() {
+    return this.ready && this.ctx.state === 'running';
+  }
+
+  /**
+   * Prøver å få lyden i gang. Må kalles fra en ekte brukerhandling.
+   *
+   * Ett forsøk holder ikke. På mobil kan konteksten bli opprettet i pauset
+   * tilstand, og resume() svarer først etterpå — slår det feil, må neste
+   * berøring få prøve på nytt. Derfor kalles denne fra hver interaksjon helt
+   * til `running` er sann, i stedet for bare fra den første.
+   */
+  async unlock() {
+    if (!this.start()) return false;
+    if (this.ctx.state !== 'running') {
+      try { await this.ctx.resume(); } catch { /* neste berøring får prøve */ }
+    }
+    // En stum lyd gjennom et <audio>-element bytter lydøkten på iOS fra
+    // "ambient" til "playback". Uten det tier Web Audio når ringelyd-bryteren
+    // står på lydløs. Gjør ingen skade andre steder.
+    if (!this._unlocked && this.running) {
+      this._unlocked = true;
+      this._silentTap();
+    }
+    return this.running;
+  }
+
+  _silentTap() {
+    try {
+      const el = document.createElement('audio');
+      el.setAttribute('playsinline', '');
+      el.muted = false;
+      el.volume = 0.001;
+      // 0,05 s stillhet som WAV.
+      el.src = 'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQ4AAAAAAAAAAAAAAAAAAAAAAA==';
+      el.play().catch(() => { /* ikke kritisk */ });
+    } catch { /* ikke kritisk */ }
   }
 
   setMuted(muted) {

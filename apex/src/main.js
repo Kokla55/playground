@@ -75,14 +75,32 @@ async function boot() {
   // bygges på første tastetrykk eller berøring — ikke ved oppstart.
   const audio = new Audio(CAR);
   const muteBtn = document.getElementById('touch-mute');
-  const visLyd = () => muteBtn?.classList.toggle('av', audio.muted);
-  const vekkLyden = () => {
-    if (audio.start()) audio.resume();
-    visLyd();
+  const lydStatus = document.getElementById('hud-audio');
+  const visLyd = () => {
+    const tekst = !audio.running ? 'venter på trykk' : audio.muted ? 'av' : 'på';
+    if (lydStatus) lydStatus.textContent = tekst;
+    muteBtn?.classList.toggle('av', audio.muted || !audio.running);
   };
-  for (const type of ['keydown', 'pointerdown', 'touchstart']) {
-    window.addEventListener(type, vekkLyden, { once: true, passive: true });
+  visLyd();
+
+  // Nettlesere gir ikke lyd før brukeren har gjort noe selv. Ett forsøk holder
+  // ikke: på mobil kan konteksten bli opprettet pauset, og da må neste
+  // berøring få prøve igjen. Lytterne står derfor til lyden faktisk går.
+  const vekkLyden = async () => {
+    await audio.unlock();
+    visLyd();
+    if (audio.running) {
+      for (const type of TRYKK) window.removeEventListener(type, vekkLyden);
+    }
+  };
+  const TRYKK = ['keydown', 'pointerdown', 'touchstart', 'touchend', 'click'];
+  for (const type of TRYKK) {
+    window.addEventListener(type, vekkLyden, { passive: true });
   }
+  // Mobil pauser lyden når man forlater fanen, og den kommer ikke i gang selv.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) vekkLyden();
+  });
 
   const input = new VehicleInput(CAR);
   if (mobile) input.touch = new TouchControls();

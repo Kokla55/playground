@@ -16,8 +16,14 @@ import { noiseSource, harmonicWave, glide, clamp } from './Synth.js';
 
 // Overtonene til grunntonen. Tredje og sjette er løftet: det er dem øret
 // hører som "motor" framfor "summetone".
-const BODY = [1.0, 0.62, 0.78, 0.34, 0.22, 0.40, 0.14, 0.10, 0.07, 0.05];
-const RASP = [0.5, 0.9, 0.7, 0.85, 0.6, 0.55, 0.45, 0.4, 0.3, 0.26, 0.2, 0.16];
+//
+// Rekkene går høyt opp med vilje. På tomgang ligger grunntonen på 45 Hz, og en
+// telefonhøyttaler gjengir nesten ingenting under 500 Hz — uten overtoner langt
+// oppe blir motoren helt borte på mobil, uansett hvor høyt man skrur.
+const BODY = [1.0, 0.62, 0.78, 0.34, 0.22, 0.40, 0.20, 0.16, 0.13, 0.11,
+              0.09, 0.09, 0.07, 0.06, 0.05, 0.05, 0.04, 0.03];
+const RASP = [0.5, 0.9, 0.7, 0.85, 0.6, 0.55, 0.5, 0.46, 0.4, 0.36, 0.32, 0.3,
+              0.26, 0.24, 0.2, 0.18, 0.15, 0.13];
 
 export class EngineSound {
   constructor(ctx, destination, noise, {
@@ -111,19 +117,21 @@ export class EngineSound {
     glide(this.rasp.frequency, firing, ctx, 0.02);
 
     // Med gass åpner filteret seg og raspen slipper til.
-    glide(this.tone.frequency, 380 + firing * (2.1 + gass * 5.4) + last * 900, ctx, 0.05);
+    // Bunnen på 900 Hz er der for de små høyttalerne: under det hører en
+    // telefon knapt noe, så filteret må aldri lukke seg lenger ned enn dette.
+    glide(this.tone.frequency, 900 + firing * (3.0 + gass * 6.5) + last * 1600, ctx, 0.05);
     glide(this.raspGain.gain, 0.05 + gass * 0.42, ctx, 0.06);
     glide(this.bodyGain.gain, 0.62 - gass * 0.10, ctx, 0.06);
 
     glide(this.intakeBand.frequency, 260 + firing * 3.2, ctx, 0.05);
-    glide(this.intakeGain.gain, 0.02 + gass * 0.10 + turtallsdel * 0.05, ctx, 0.06);
+    glide(this.intakeGain.gain, 0.05 + gass * 0.16 + turtallsdel * 0.09, ctx, 0.06);
 
     glide(this.turbo.frequency, 2400 + this._boost * 4200, ctx, 0.08);
     glide(this.turboGain.gain, this._boost * this._boost * 0.035, ctx, 0.08);
 
     // Under girskift kuttes momentet, og lyden faller sammen et øyeblikk.
     const kutt = t.shifting ? 0.42 : 1;
-    const nivå = (0.16 + last * 0.5) * kutt * volume;
+    const nivå = (0.20 + last * 0.52) * kutt * volume;
     glide(this.out.gain, nivå, ctx, t.shifting ? 0.01 : 0.05);
   }
 
