@@ -36,7 +36,8 @@ export class TouchControls {
     this._bindPedal(this.el.handbrake, 'handbrake');
 
     for (const [id, action] of [['touch-cam', 'camera'], ['touch-reset', 'reset'],
-                                  ['touch-mute', 'mute'], ['touch-pause', 'pause']]) {
+                                  ['touch-mute', 'mute'], ['touch-track', 'track'],
+                                  ['touch-pause', 'pause']]) {
       const btn = root.getElementById(id);
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();

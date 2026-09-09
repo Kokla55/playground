@@ -19,6 +19,7 @@ const ACTION_KEYS = {
   Escape: 'pause',
   KeyH: 'help',
   KeyM: 'mute',
+  KeyT: 'track',
 };
 
 export class VehicleInput {

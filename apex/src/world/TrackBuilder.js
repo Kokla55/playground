@@ -14,6 +14,27 @@ import { asphaltMaps, grassMaps, concreteMaps, kerbMaps } from '../render/Textur
 
 const SHOULDER = 13.0;      // gress fra asfaltkant til rekkverk
 const BEHIND_BARRIER = 2.0; // og videre bak muren, så bakken aldri tar slutt
+const MIN_SHOULDER = 1.4;   // men aldri mindre enn dette
+
+/**
+ * Hvor bred skulderen er akkurat her.
+ *
+ * Den krymper i trange svinger, og det må den. Et bånd som forskyves lenger ut
+ * enn svingens radius bretter seg over seg selv på innsiden — med tretten
+ * meter skulder ble forholdet 1.46 i hårnålen på Kystveien, og geometrien falt
+ * fra hverandre. Det er dessuten slik ekte fjellveier er: en hårnål har ingen
+ * grusavkjørsel, den har en mur rett i veikanten.
+ */
+function shoulderAt(f) {
+  // 0.72 av radien er der båndet så vidt holder seg utbrettet. Lavere enn
+  // det krympet frisonen på Apex Ring også, der ingenting bretter seg.
+  const plass = 0.72 * f.radius - f.halfWidth - BEHIND_BARRIER;
+  const bredde = THREE.MathUtils.clamp(plass, MIN_SHOULDER, SHOULDER);
+  // På ei bru finnes det ingen skulder — der er det rekkverk og så luft.
+  // Uten dette la gressbåndet seg som et lokk over kløfta, og brua ble
+  // usynlig fra bilen.
+  return THREE.MathUtils.lerp(bredde, 0.15, f.bridge ?? 0);
+}
 const KERB_WIDTH = 1.7;
 const KERB_HEIGHT = 0.055;
 const KERB_RADIUS = 250;   // curbs legges der svingen er trangere enn dette
@@ -84,6 +105,8 @@ function kerbStrength(path, index) {
   return THREE.MathUtils.clamp((KERB_RADIUS - f.radius) / (KERB_RADIUS * 0.45), 0, 1);
 }
 
+export { shoulderAt };
+
 export function buildTrack(path, physics, { quality = 1 } = {}) {
   const RAPIER = physics.RAPIER;
   const group = new THREE.Group();
@@ -132,7 +155,7 @@ export function buildTrack(path, physics, { quality = 1 } = {}) {
   for (const sign of [-1, 1]) {
     const geo = ribbon(path,
       (f) => sign * f.halfWidth,
-      (f) => sign * (f.halfWidth + SHOULDER + BEHIND_BARRIER),
+      (f) => sign * (f.halfWidth + shoulderAt(f) + BEHIND_BARRIER),
       () => -0.02, () => -0.34,
       { uvRepeat: 12 });
     const mesh = new THREE.Mesh(geo, grass);
@@ -159,6 +182,8 @@ export function buildTrack(path, physics, { quality = 1 } = {}) {
 
   // --- rekkverk ---
   buildBarriers(path, physics, group, barrierMat);
+  buildBridges(path, group, barrierMat, asphalt);
+  buildTunnels(path, group, barrierMat);
 
   // --- oppmerking ---
   buildMarkings(path, group, paint);
@@ -171,7 +196,7 @@ function buildBarriers(path, physics, group, material) {
   const n = path.samples;
 
   for (const sign of [-1, 1]) {
-    const offset = (f) => sign * (f.halfWidth + SHOULDER);
+    const offset = (f) => sign * (f.halfWidth + shoulderAt(f));
     const geo = ribbon(path,
       offset, offset,
       () => -0.28, () => -0.28 + BARRIER_HEIGHT,
@@ -246,4 +271,116 @@ export function startPose(path, offsetMetres = 0) {
     new THREE.Vector3(0, 0, 1), f.tangent.clone().normalize(),
   );
   return { position, quaternion, frame: f };
+}
+
+/**
+ * Brua.
+ *
+ * Terrenget stuper ned i et innløp der brua står, så veibanen må bære seg
+ * selv: en dekkeunderside, rekkverk i stedet for grus langs kantene, og pilarer
+ * ned i vannet. Alt følger de samme prøvepunktene som asfalten, så dekket kan
+ * ikke havne et annet sted enn veien.
+ */
+function buildBridges(path, group, betong, asfalt) {
+  const n = path.samples;
+  const på = (f) => f.bridge > 0.02;
+  if (!path.frames.some(på)) return;
+
+  // Underside: samme bånd som veien, men senket og med egen tykkelse.
+  const dekke = ribbon(path,
+    (f) => -(f.halfWidth + 1.1) * f.bridge - f.halfWidth * (1 - f.bridge),
+    (f) => (f.halfWidth + 1.1) * f.bridge + f.halfWidth * (1 - f.bridge),
+    (f) => -0.05 - f.bridge * 1.5, (f) => -0.05 - f.bridge * 1.5,
+    { uvRepeat: 10 });
+  dekke.computeVertexNormals();
+  const underside = new THREE.Mesh(dekke, betong);
+  underside.receiveShadow = true;
+  underside.castShadow = true;
+  group.add(underside);
+
+  // Sidekanter fra dekket opp til rekkverkshøyde.
+  for (const sign of [-1, 1]) {
+    const kant = (f) => sign * (f.halfWidth + 1.1);
+    const geo = ribbon(path,
+      kant, kant,
+      (f) => -0.05 - f.bridge * 1.5, (f) => (f.bridge > 0.02 ? 1.05 : -0.05),
+      { uvRepeat: 6 });
+    geo.computeVertexNormals();
+    const vegg = new THREE.Mesh(geo, betong);
+    vegg.material.side = THREE.DoubleSide;
+    vegg.castShadow = true;
+    group.add(vegg);
+  }
+
+  // Pilarer med jevne mellomrom, ned i innløpet.
+  const pilarMat = betong;
+  for (let i = 0; i < n; i += 26) {
+    const f = path.frameAt(i);
+    if (f.bridge < 0.55) continue;
+    for (const sign of [-1, 1]) {
+      const topp = f.position.clone().addScaledVector(f.right, sign * (f.halfWidth * 0.55));
+      const høyde = 30;
+      const pilar = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, høyde, 2.4), pilarMat,
+      );
+      pilar.position.copy(topp).setY(topp.y - 1.6 - høyde / 2);
+      pilar.castShadow = true;
+      group.add(pilar);
+    }
+  }
+  void asfalt;
+}
+
+/**
+ * Tunnelen.
+ *
+ * Vegger og tak i betong. Taket kaster skygge som alt annet, så det blir mørkt
+ * inne uten at noe måtte skrus av — og lyst igjen ved utløpet. Lysarmaturene i
+ * taket er selvlysende flater, ikke lyskilder: en lampe per ti meter ville kostet
+ * langt mer enn den synes.
+ */
+function buildTunnels(path, group, betong) {
+  const n = path.samples;
+  if (!path.frames.some((f) => f.tunnel > 0.02)) return;
+
+  const HØYDE = 6.4;
+  const bredde = (f) => f.halfWidth + 1.6;
+
+  for (const sign of [-1, 1]) {
+    const geo = ribbon(path,
+      (f) => sign * bredde(f), (f) => sign * bredde(f),
+      () => -0.4, (f) => (f.tunnel > 0.02 ? HØYDE * f.tunnel - 0.4 : -0.4),
+      { uvRepeat: 5 });
+    geo.computeVertexNormals();
+    const vegg = new THREE.Mesh(geo, betong);
+    vegg.material.side = THREE.DoubleSide;
+    vegg.castShadow = true;
+    vegg.receiveShadow = true;
+    group.add(vegg);
+  }
+
+  const tak = ribbon(path,
+    (f) => -bredde(f), (f) => bredde(f),
+    (f) => HØYDE * f.tunnel - 0.4, (f) => HØYDE * f.tunnel - 0.4,
+    { uvRepeat: 5 });
+  tak.computeVertexNormals();
+  const takMesh = new THREE.Mesh(tak, betong);
+  takMesh.material.side = THREE.DoubleSide;
+  takMesh.castShadow = true;
+  takMesh.receiveShadow = true;
+  group.add(takMesh);
+
+  // Lysarmaturer langs taket.
+  const lampeMat = new THREE.MeshStandardMaterial({
+    color: 0xfff2d0, emissive: 0xffe9b8, emissiveIntensity: 3.4, toneMapped: true,
+  });
+  const lampe = new THREE.BoxGeometry(0.9, 0.12, 0.34);
+  for (let i = 0; i < n; i += 9) {
+    const f = path.frameAt(i);
+    if (f.tunnel < 0.75) continue;
+    const m = new THREE.Mesh(lampe, lampeMat);
+    m.position.copy(f.position).addScaledVector(f.normal, HØYDE - 0.75);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.tangent);
+    group.add(m);
+  }
 }

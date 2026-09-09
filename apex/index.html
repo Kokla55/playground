@@ -119,7 +119,8 @@ html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
 #touch-cam{right:calc(16px + env(safe-area-inset-right))}
 #touch-reset{right:calc(66px + env(safe-area-inset-right))}
 #touch-mute{right:calc(116px + env(safe-area-inset-right))}
-#touch-pause{right:calc(166px + env(safe-area-inset-right))}
+#touch-track{right:calc(166px + env(safe-area-inset-right))}
+#touch-pause{right:calc(216px + env(safe-area-inset-right))}
 /* Av lyd er en tilstand, ikke et trykk — den skal se dempet ut. */
 .tbtn.av{color:#5c6675;border-color:rgba(232,237,242,.08)}
 
@@ -166,12 +167,13 @@ html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
     <dt>HJUL PÅ BAKKEN</dt><dd id="hud-wheels">4/4</dd>
     <dt>FPS</dt><dd id="hud-fps">0</dd>
     <dt>LYD</dt><dd id="hud-audio">venter</dd>
+    <dt>BANE</dt><dd id="hud-track">—</dd>
   </div>
 
   <div id="hud-keys">
     <b>W</b> gass &middot; <b>S</b> brems/revers<br>
     <b>A</b> <b>D</b> styring &middot; <b>MELLOMROM</b> håndbrekk<br>
-    <b>C</b> kamera &middot; <b>R</b> reset &middot; <b>M</b> lyd &middot; <b>ESC</b> pause
+    <b>C</b> kamera &middot; <b>R</b> reset &middot; <b>M</b> lyd &middot; <b>T</b> bane &middot; <b>ESC</b> pause
   </div>
 
   <div id="hud-map">
@@ -208,6 +210,7 @@ html,body{height:100%;overflow:hidden;background:#0a0c10;color:#e8edf2;
   <button class="tbtn" id="touch-cam">KAM</button>
   <button class="tbtn" id="touch-reset">RESET</button>
   <button class="tbtn" id="touch-mute">LYD</button>
+  <button class="tbtn" id="touch-track">BANE</button>
   <button class="tbtn" id="touch-pause">II</button>
 </div>
 

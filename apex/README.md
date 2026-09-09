@@ -217,6 +217,38 @@ Nettlesere gir ikke lyd før brukeren har gjort noe, så kjeden bygges på førs
 tastetrykk eller berøring — ikke ved oppstart. **M** slår lyden av og på, eller
 LYD-knappen på mobil.
 
+## Kystveien
+
+Banen er nå data, ikke kode. `tracks.js` inneholder begge banene som
+kontrollpunkter, bredder og hvilke strekninger som er tunnel eller bro; alt
+annet utledes som før av senterlinjen. **T** bytter bane, eller BANE-knappen på
+mobil. Byttet er en ekte omstart av verden — fysikk, terreng og teksturer
+bygges på nytt sammen, i stedet for et halvt bytte der noe gammelt blir
+liggende igjen.
+
+Kystveien er 2962 m og går fra 17 m over havet opp til 98 m og ned igjen:
+kystvei på en skrent med sjøen på høyre hånd, bro over et innløp, klatring
+innover i landet, to hårnåler — den trangeste med 13,1 m radius — tunnel
+gjennom fjellryggen på det høyeste, og en lang nedoverbakke tilbake til havet.
+Bratteste stigning er 11,8 %.
+
+To ting måtte løses for at hårnåler skulle bli mulige i det hele tatt.
+
+**Ribben brettet seg.** Et bånd som forskyves lenger ut enn svingens radius
+folder seg over seg selv på innsiden. Med tretten meter skulder ble forholdet
+1,46 i hårnålen og geometrien falt fra hverandre. Skulderen krymper nå med
+radien — men først ved 0,72 av den, der båndet så vidt holder. Første forsøk
+brukte 0,34 og krympet frisonen på Apex Ring også; det fanget regresjonstesten
+opp med at hjulene fant gress der de skulle funnet curbstein.
+
+**Brua var usynlig.** Terrenget stuper 34 m der brua står, men gressbåndet i
+veikanten la seg som et lokk over kløfta. På ei bru er det rekkverk og så luft,
+så skulderen går mot null der.
+
+Havet er én flate i havnivå. Kystlinja tegnes ikke — den oppstår der terrenget
+krysser flaten, og blir like ujevn som landskapet selv. Målt tverrsnitt fra
+kystveien: 18 m ved veien, 13 m etter femti meter, under vann etter sytti.
+
 ## Status
 
 - [x] **Fase 0** — kartlegging av miljø og teknologivalg
@@ -228,7 +260,7 @@ LYD-knappen på mobil.
 - [x] **Fase 4** — materialkart generert i koden, kaskadeskygger, sol på
       himmelen og en etterbehandlingskjede med fartsuskarphet og vignett
 - [x] **Fase 5** — lyd syntetisert fra telemetrien: motor, dekk, vind og underlag
-- [ ] **Fase 6** — kyst- og fjellbane
+- [x] **Fase 6** — Kystveien: kystvei, bro, hårnåler og tunnel
 - [ ] **Fase 7** — vær og døgnsyklus
 - [ ] **Fase 8** — AI-motstandere
 - [ ] **Fase 9–11** — spillmoduser, racing-UI og cinematic intro

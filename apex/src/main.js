@@ -11,6 +11,7 @@ import { Mirrors } from './render/Mirrors.js';
 import { PostFx } from './render/PostFx.js';
 import { Audio } from './audio/Audio.js';
 import { Circuit } from './world/Circuit.js';
+import { TRACKS } from './world/tracks.js';
 import { Hud } from './ui/Hud.js';
 import { MiniMap } from './ui/MiniMap.js';
 import { TouchControls, hasTouch } from './ui/TouchControls.js';
@@ -43,10 +44,24 @@ async function boot() {
   status.textContent = 'BYGGER BANE';
 
   const mobile = hasTouch();
+
+  // Hvilken bane som kjøres står i adressen, slik at et banebytte er en ekte
+  // omstart av verden og ikke et halvt bytte der noe gammelt blir liggende
+  // igjen. Banen bygger fysikk, terreng og teksturer, og alt må være i takt.
+  const valgtBane = TRACKS.some((t) => t.id === location.hash.slice(1))
+    ? location.hash.slice(1) : TRACKS[0].id;
   const world = new Circuit(physics, {
     shadowMapSize: mobile ? 1024 : 2048,
     quality: mobile ? 0 : 1,
+    trackId: valgtBane,
   });
+  const trackEl = document.getElementById('hud-track');
+  if (trackEl) trackEl.textContent = world.path.name;
+  const nesteBane = () => {
+    const i = TRACKS.findIndex((t) => t.id === valgtBane);
+    location.hash = TRACKS[(i + 1) % TRACKS.length].id;
+    location.reload();
+  };
   const renderer = createRenderer(document.getElementById('scene'), mobile);
   world.createEnvironment(renderer);
 
@@ -154,6 +169,7 @@ async function boot() {
         audio.toggleMute();
         visLyd();
       }
+      if (input.consume('track')) nesteBane();
       if (input.consume('pause')) {
         loop.paused = !loop.paused;
         pausePanel.classList.toggle('on', loop.paused);
@@ -161,7 +177,7 @@ async function boot() {
 
       model.sync(vehicle);
       cockpit.update(dt, vehicle, input.steer);
-      world.sync();
+      world.sync(dt);
 
       const rig = cameras[cameraIndex];
       rig.update(dt, vehicle);

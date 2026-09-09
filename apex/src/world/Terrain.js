@@ -97,7 +97,8 @@ class TrackIndex {
       if (d < bestD) { bestD = d; best = i; }
     }
     const f = this.path.frames[best];
-    return { distance: Math.sqrt(bestD), roadY: f.position.y, index: best, halfWidth: f.halfWidth };
+    return { distance: Math.sqrt(bestD), roadY: f.position.y, index: best,
+             halfWidth: f.halfWidth, bridge: f.bridge ?? 0 };
   }
 }
 
@@ -105,6 +106,9 @@ export class Terrain {
   constructor(path, { extent = 1000, resolution = 210 } = {}) {
     this.path = path;
     this.index = new TrackIndex(path);
+    // Har banen et havnivå, faller landet mot vest og blir til sjø.
+    this.seaLevel = path.seaLevel;
+    this.coastFrom = -520;
 
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     for (const f of path.frames) {
@@ -127,8 +131,11 @@ export class Terrain {
     const d = near.distance - near.halfWidth;
 
     // Rett utenfor asfalten er terrenget veibanen, senket noen centimeter.
-    const base = near.roadY - 0.30;
-    if (d < FLAT_MARGIN) return base;
+    // Under ei bru finnes det ikke bakke: der stuper landet ned i et innløp,
+    // og det er nettopp derfor brua er der.
+    const kløft = near.bridge * 34;
+    const base = near.roadY - 0.30 - kløft;
+    if (d < FLAT_MARGIN) return this._sea(base, x, d);
 
     const rolling = (fbm(x / 260, z / 260, 4) - 0.5) * 34;
     const detail = (fbm(x / 62, z / 62, 3) - 0.5) * 3.6;
@@ -139,7 +146,22 @@ export class Terrain {
     const ridge = Math.abs(fbm(x / 700 + 11.3, z / 700 - 4.7, 3) - 0.5) * 2;
     const mountains = alpine * (ridge ** 1.6) * 320;
 
-    return base + relief * (rolling + detail) + mountains;
+    return this._sea(base + relief * (rolling + detail) + mountains, x, d);
+  }
+
+  /**
+   * Havet.
+   *
+   * Landet faller mot vest til det går under vannflaten. Kystlinja tegnes
+   * ikke: den oppstår der terrenget krysser havnivået, og blir dermed like
+   * ujevn som støyen i landskapet.
+   */
+  _sea(y, x, d) {
+    if (this.seaLevel === null) return y;
+    const fall = smoothstep(0, 190, this.coastFrom - x) * 74;
+    const h = y - fall * smoothstep(FLAT_MARGIN, RELIEF_START * 2, d);
+    // Havbunnen flater ut litt under vannflaten.
+    return Math.max(h, this.seaLevel - 22);
   }
 
   _buildMesh() {
@@ -164,7 +186,8 @@ export class Terrain {
       pos.setY(i, y);
 
       // Fargen følger høyden: gress, lyng, fjell og til slutt snø på toppene.
-      if (y < 12) c.copy(lowland).lerp(upland, smoothstep(0, 12, y));
+      if (this.seaLevel !== null && y < this.seaLevel + 1.2) c.setRGB(0.62, 0.58, 0.46);
+      else if (y < 12) c.copy(lowland).lerp(upland, smoothstep(0, 12, y));
       else if (y < 90) c.copy(upland).lerp(rock, smoothstep(12, 90, y));
       else c.copy(rock).lerp(snow, smoothstep(95, 190, y));
 

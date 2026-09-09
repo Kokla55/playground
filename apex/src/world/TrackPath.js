@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TRACKS } from './tracks.js';
 
 /**
  * Banens senterlinje.
@@ -7,42 +8,10 @@ import * as THREE from 'three';
  * rundbane. Alt annet — asfalt, curbs, rekkverk og terreng — utledes av denne,
  * slik at det finnes én sannhet om hvor banen går.
  *
- * Punktene er [x, z, høyde]. x og z er planet, høyden er over havet.
+ * Selve punktene ligger i tracks.js. Denne klassen vet ingenting om hvilken
+ * bane den bygger, bare hvordan en bane blir til av kontrollpunkter.
  */
-const CONTROL = [
-  [-430, -452,  0.0],   // start/mål — nesten 500 m rett fram
-  [-300, -452,  0.0],
-  [-160, -452,  0.0],
-  [ -20, -450,  0.0],
-  [ 120, -446,  0.8],
-  [ 235, -430,  2.6],   // sving 1: rask høyre, stigende
-  [ 322, -366,  5.2],
-  [ 362, -262,  7.6],
-  [ 352, -156,  8.4],   // toppen av stigningen
-  [ 316,  -68,  6.6],   // ned igjen
-  [ 268,   30,  4.2],   // esser
-  [ 292,  140,  2.6],
-  [ 244,  238,  1.8],
-  [ 176,  296,  3.2],   // opp mot kneika
-  [  60,  334,  6.4],
-  [ -70,  340,  9.4],
-  [-186,  296, 11.0],   // kneik, banens høyeste punkt
-  [-262,  212,  9.2],
-  [-306,  116,  6.4],   // lang nedoverbakke
-  [-292,   16,  4.0],
-  [-238,  -70,  2.6],   // inn i den langsomme
-  [-286, -132,  1.8],
-  [-342, -250,  1.0],
-  [-408, -336,  0.6],
-  [-452, -420,  0.2],   // siste sving inn på rettstrekket
-];
-
-/** Banebredde varierer: bredest på hovedrettstrekket, smalere i hårnålen. */
-// Doseringen og bredden glattes over denne lengden av banen.
-const SMOOTH_METRES = 32;
-
-const WIDTH_MIN = 10.5;
-const WIDTH_MAX = 15.0;
+const SMOOTH_METRES = 32;   // doseringen og bredden glattes over denne lengden
 
 const _p = new THREE.Vector3();
 const _t = new THREE.Vector3();
@@ -51,18 +20,52 @@ const _next = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export class TrackPath {
-  /** @param {number} samples antall punkter senterlinjen deles opp i */
-  constructor(samples = 1400) {
+  /** @param {object} def banedefinisjon fra tracks.js */
+  constructor(def = TRACKS[0]) {
+    this.def = def;
+    this.id = def.id;
+    this.name = def.name;
+    this.widthMin = def.widthMin ?? 10.5;
+    this.widthMax = def.widthMax ?? 15.0;
+    this.seaLevel = def.seaLevel ?? null;
+
     this.curve = new THREE.CatmullRomCurve3(
-      CONTROL.map(([x, z, y]) => new THREE.Vector3(x, y, z)),
+      def.control.map(([x, z, y]) => new THREE.Vector3(x, y, z)),
       true,
       'centripetal',
       0.5,
     );
 
-    this.samples = samples;
+    this.samples = def.samples ?? 1400;
     this.frames = [];
     this._build();
+    this._markSections();
+  }
+
+  /**
+   * Merker hvilke prøvepunkter som ligger i tunnel eller på bro.
+   *
+   * Strekningene er oppgitt som andel av runden, ikke som meter, slik at de
+   * følger med hvis banen endres. Overgangene tones inn og ut over noen meter
+   * så tunnelmunningen ikke slår på som en bryter.
+   */
+  _markSections() {
+    const seksjon = (liste, navn) => {
+      for (const f of this.frames) f[navn] = 0;
+      for (const { from, to } of liste ?? []) {
+        const a = from * this.length;
+        const b = to * this.length;
+        const toning = Math.min(18, (b - a) * 0.22);
+        for (const f of this.frames) {
+          if (f.distance < a || f.distance > b) continue;
+          const inn = Math.min(1, (f.distance - a) / toning);
+          const ut = Math.min(1, (b - f.distance) / toning);
+          f[navn] = Math.max(f[navn], Math.min(inn, ut));
+        }
+      }
+    };
+    seksjon(this.def.tunnels, 'tunnel');
+    seksjon(this.def.bridges, 'bridge');
   }
 
   _build() {
@@ -132,7 +135,7 @@ export class TrackPath {
 
       // Trangere sving gir smalere bane; det gjør hårnålen tydelig.
       const tight = Math.min(Math.abs(curvature) * 55, 1);
-      const width = THREE.MathUtils.lerp(WIDTH_MAX, WIDTH_MIN, tight);
+      const width = THREE.MathUtils.lerp(this.widthMax, this.widthMin, tight);
 
       this.frames.push({
         position: p.clone(),

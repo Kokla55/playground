@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { TrackPath } from './TrackPath.js';
+import { trackById } from './tracks.js';
 import { buildTrack, startPose, START_FRACTION } from './TrackBuilder.js';
 import { Terrain } from './Terrain.js';
+import { waterMaps } from '../render/Textures.js';
 
 /**
  * Hele banemiljøet: asfalt, curbs, rekkverk, terreng, skog og fjell.
@@ -96,7 +98,7 @@ function skyDome(radius = 4000) {
 }
 
 export class Circuit {
-  constructor(physics, { shadowMapSize = 2048, quality = 1 } = {}) {
+  constructor(physics, { shadowMapSize = 2048, quality = 1, trackId = 'ring' } = {}) {
     this.physics = physics;
     this.scene = new THREE.Scene();
     // Samme farge som horisonten: da smelter fjellene inn i himmelen
@@ -104,7 +106,7 @@ export class Circuit {
     this.scene.fog = new THREE.Fog(0xd6dfe8, 420, 3200);
     this.dynamics = [];
 
-    this.path = new TrackPath(1400);
+    this.path = new TrackPath(trackById(trackId));
     this.scene.add(skyDome());
     this._lighting(shadowMapSize);
 
@@ -114,6 +116,8 @@ export class Circuit {
 
     this.terrain = new Terrain(this.path);
     this.scene.add(this.terrain.group);
+
+    if (this.path.seaLevel !== null) this._sea(this.path.seaLevel);
 
     const pose = startPose(this.path);
     this.spawn = {
@@ -217,6 +221,28 @@ export class Circuit {
   }
 
   /**
+   * Havflaten.
+   *
+   * Én stor plate i havnivå. Kystlinja tegnes ikke — den oppstår der terrenget
+   * krysser denne flaten, og blir like ujevn som landskapet selv. Krusningene
+   * er ett normalkart som skyves sakte; det er nok til at speilbildet av
+   * himmelen beveger seg.
+   */
+  _sea(level) {
+    const maps = waterMaps();
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x1d4a5c, metalness: 0.35, roughness: 0.10,
+      normalMap: maps.normalMap,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = level;
+    this.scene.add(mesh);
+    this.water = { map: maps.normalMap, t: 0 };
+  }
+
+  /**
    * Miljøkart fra himmelen. Uten det har metaller ingenting å speile, og
    * felger og lakk rendres kullsvarte uansett hvor sterkt sollyset er.
    */
@@ -237,7 +263,11 @@ export class Circuit {
     return target.texture;
   }
 
-  sync() {
+  sync(dt = 0) {
+    if (this.water) {
+      this.water.t += dt;
+      this.water.map.offset.set(this.water.t * 0.012, this.water.t * 0.019);
+    }
     for (const d of this.dynamics) {
       const t = d.body.translation();
       const r = d.body.rotation();

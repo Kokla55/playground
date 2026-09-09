@@ -218,3 +218,9 @@ export function kerbMaps({ size = 128, anisotropy = 4, repeat = [2, 1] } = {}) {
     normalMap: texture(normalFrom(grit, 1.4), { anisotropy }),
   }, repeat);
 }
+
+/** Sjø: to lag krusninger som skal skyves i hver sin retning. */
+export function waterMaps({ size = 256, anisotropy = 4, repeat = [26, 26] } = {}) {
+  const ripple = field(size, 4, 14, 2251, 0.55);
+  return set({ normalMap: texture(normalFrom(ripple, 0.9), { anisotropy }) }, repeat);
+}
