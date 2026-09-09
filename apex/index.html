@@ -19,6 +19,9 @@ canvas{display:block;width:100%;height:100%}
 #hud{position:fixed;inset:0;pointer-events:none;z-index:2;
   font-variant-numeric:tabular-nums;opacity:0;transition:opacity .6s ease}
 #hud.ready{opacity:1}
+/* I cockpit tar instrumentpanelet over — skjermgrensesnittet trekker seg unna. */
+#hud.incar #hud-gauge,#hud.incar #hud-rpm{opacity:0;transition:opacity .35s ease}
+#hud #hud-gauge,#hud #hud-rpm{transition:opacity .35s ease}
 
 /* --- fartsmåler nede til høyre --- */
 #hud-gauge{position:absolute;right:26px;bottom:24px;display:flex;align-items:flex-end;gap:14px}

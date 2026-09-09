@@ -231,12 +231,12 @@ export class CarModel {
     const o = cfg.ridePoint;
 
     // Sidespeil.
-    for (const x of [-0.98, 0.98]) {
-      const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 0.05), this.materials.trim);
-      stalk.position.set(x, 0.96 - o, 0.70);
+    for (const x of [-0.96, 0.96]) {
+      const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.05), this.materials.trim);
+      stalk.position.set(x, 0.96 - o, 1.02);
       this.group.add(stalk);
-      const pod = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.10, 0.07), this.materials.trim);
-      pod.position.set(x * 1.10, 0.99 - o, 0.68);
+      const pod = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.11, 0.08), this.materials.trim);
+      pod.position.set(x * 1.09, 0.99 - o, 1.03);
       this.group.add(pod);
     }
 

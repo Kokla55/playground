@@ -33,7 +33,7 @@ npm run dev      # åpne adressen som skrives ut
 | `S` | Brems, og revers når bilen står stille |
 | `A` / `D` | Styring |
 | `Mellomrom` | Håndbrekk |
-| `C` | Bytt kamera |
+| `C` | Bytt kamera (cockpit ↔ forfølgende) |
 | `R` | Sett bilen tilbake på startlinjen |
 | `Esc` | Pause |
 
@@ -45,10 +45,12 @@ avtrekkerne er gass og brems.
 ```
 src/
   core/      Loop (fast tidssteg) og Physics (Rapier-innpakning)
-  vehicle/   CarConfig, Vehicle, Tire, Drivetrain, VehicleInput, CarModel
-  camera/    CameraRig
+  vehicle/   CarConfig, Vehicle, Tire, Drivetrain, VehicleInput,
+             CarModel (karosseri), CockpitModel (interiør)
+  camera/    CameraRig (cockpit og forfølgende)
+  render/    Mirrors
   world/     TestScene
-  ui/        Hud
+  ui/        Hud, TouchControls
 ```
 
 Hver del kjenner så lite som mulig til de andre: dekkmodellen vet ingenting om
@@ -91,13 +93,37 @@ Verifisert automatisk i Chromium med fast tidssteg:
 | Vektfordeling i ro | 42/58 foran/bak |
 | Vektforskyvning ved 1,16 g brems | 3125 N framover (teori: 2729 N) |
 
+## Kameraer og speil
+
+**Cockpit** er hovedkameraet. Det sitter fast i karosseriet og følger både nikk
+og krengning — det er det som gjør at underlaget kjennes. Hodet forskyves litt
+av g-kreftene, og blikket dras svakt inn i svingen. Instrumentpanelet tegnes på
+et lerret og viser fart, turtall, gir og sideakselerasjon; rattet dreier halvannen
+omdreining fra låsing til låsing.
+
+**Alle tre speilene er ekte.** Hvert av dem rendrer scenen på nytt fra sin egen
+posisjon inn i en liten tekstur, i lav oppløsning og 30 ganger i sekundet. Det du
+ser bak deg er det som faktisk ligger bak deg. Bakspeilets kamera er løftet over
+motordekselet — en midtmotorbil har i praksis ingen sikt rett bakover, og et
+speil som bare viser panser er til ingen nytte.
+
+**Det forfølgende kameraet** mykes opp i bilens egen ramme, ikke i verden. En
+utjevning som følger et mål i fart ligger permanent etter med farten ganget med
+tidskonstanten — ved 270 km/t ble det tretten meter, og bilen krympet til en
+prikk. Nå følger avstanden bilen nøyaktig, mens bare dreiningen henger etter.
+
 ## Status
 
 - [x] **Fase 0** — kartlegging av miljø og teknologivalg
 - [x] **Fase 1** — kjørbar bil med realistisk fysikk, testbane, HUD
-- [ ] **Fase 2** — cockpit med ratt, instrumenter og speil
+- [x] **Fase 2** — cockpit med ratt, instrumenter og tre ekte speil; forfølgende
+      kamera med dynamisk synsvinkel, skjelv og helning inn i svingen
 - [ ] **Fase 3** — ordentlig testbane med curbs, rekkverk og høydeforskjeller
-- [ ] **Fase 4** — grafikk: materialer, refleksjoner, etterbehandling
+- [ ] **Fase 4** — grafikk: materialer, refleksjoner, etterbehandling.
+      Ekte fartsuskarphet hører hjemme her: et forsøk på radiell uskarphet
+      gjennom `EffectComposer` konverterte fargerommet to ganger og vasket ut
+      hele bildet, så pipelinen bygges skikkelig i denne fasen framfor å
+      etterlate en ødelagt effekt
 - [ ] **Fase 5** — lyd drevet av turtall, gir og belastning
 - [ ] **Fase 6** — kyst- og fjellbane
 - [ ] **Fase 7** — vær og døgnsyklus

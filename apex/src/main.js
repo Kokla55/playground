@@ -5,7 +5,9 @@ import { CAR } from './vehicle/CarConfig.js';
 import { Vehicle } from './vehicle/Vehicle.js';
 import { VehicleInput } from './vehicle/VehicleInput.js';
 import { CarModel } from './vehicle/CarModel.js';
-import { ChaseCamera, HoodCamera } from './camera/CameraRig.js';
+import { CockpitModel, COCKPIT_LAYER } from './vehicle/CockpitModel.js';
+import { ChaseCamera, CockpitCamera } from './camera/CameraRig.js';
+import { Mirrors } from './render/Mirrors.js';
 import { TestScene } from './world/TestScene.js';
 import { Hud } from './ui/Hud.js';
 import { TouchControls, hasTouch } from './ui/TouchControls.js';
@@ -42,18 +44,25 @@ async function boot() {
   world.createEnvironment(renderer);
 
   const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.15, 5000);
+  camera.layers.enable(COCKPIT_LAYER);
 
   const vehicle = new Vehicle(physics, CAR, world.spawn);
   const model = new CarModel(CAR);
+  const cockpit = new CockpitModel(CAR);
+  model.group.add(cockpit.group);
   world.scene.add(model.group);
+
+  const mirrors = new Mirrors(CAR, model.group, { scale: mobile ? 0.6 : 1, hz: mobile ? 20 : 30 });
 
   const input = new VehicleInput(CAR);
   if (mobile) input.touch = new TouchControls();
 
-  const cameras = [new ChaseCamera(camera), new HoodCamera(camera, CAR)];
+  // Cockpit er hovedkameraet, slik oppdraget ber om.
+  const cameras = [new CockpitCamera(camera, CAR, cockpit.eye), new ChaseCamera(camera)];
   let cameraIndex = 0;
 
   const hud = new Hud(CAR);
+  const hudEl = document.getElementById('hud');
   const pausePanel = document.getElementById('pause');
 
   const onResize = () => {
@@ -62,6 +71,7 @@ async function boot() {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
   };
   window.addEventListener('resize', onResize);
+  hudEl.classList.add('incar');
 
   const stepSimulation = (dt) => {
     input.update(dt);
@@ -80,6 +90,9 @@ async function boot() {
       if (input.consume('camera')) {
         cameraIndex = (cameraIndex + 1) % cameras.length;
         cameras[cameraIndex].reset();
+        // I cockpit viser instrumentpanelet fart og turtall, så det store
+        // skjermgrensesnittet trekker seg unna.
+        hudEl.classList.toggle('incar', cameraIndex === 0);
       }
       if (input.consume('pause')) {
         loop.paused = !loop.paused;
@@ -87,9 +100,15 @@ async function boot() {
       }
 
       model.sync(vehicle);
+      cockpit.update(dt, vehicle, input.steer);
       world.sync();
       world.followSun(vehicle.position);
-      cameras[cameraIndex].update(dt, vehicle);
+
+      const rig = cameras[cameraIndex];
+      rig.update(dt, vehicle);
+
+      // Speilene tegnes før hovedbildet, med bilen allerede flyttet på plass.
+      mirrors.update(dt, renderer, world.scene, vehicle);
 
       renderer.render(world.scene, camera);
       hud.update(vehicle.telemetry, loop.fps);
@@ -97,7 +116,9 @@ async function boot() {
   });
 
   // Første bilde tegnes før overlayet forsvinner, slik at man aldri ser en tom skjerm.
+  model.sync(vehicle);
   cameras[0].update(FIXED_STEP, vehicle);
+  mirrors.update(1, renderer, world.scene, vehicle);
   renderer.render(world.scene, camera);
 
   loop.start();
@@ -106,8 +127,10 @@ async function boot() {
 
   if (import.meta.env.DEV) {
     window.__apex = {
-      physics, world, vehicle, model, input, camera, cameras, loop, CAR,
+      physics, world, vehicle, model, cockpit, mirrors,
+      input, camera, cameras, loop, CAR,
       step: stepSimulation, fixedStep: FIXED_STEP,
+      setCamera: (i) => { cameraIndex = i; cameras[i].reset(); hudEl.classList.toggle('incar', i === 0); },
     };
   }
 }
