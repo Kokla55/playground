@@ -154,6 +154,41 @@ er lettere å følge i øyeblikket, men da mister man oversikten over hvor på r
 man er. Den delen av runden du har kjørt tegnes opp i klar farge, så avstanden er
 noe du ser framfor å måtte lese. Under kartet står runde og meter av rundelengden.
 
+## Grafikken
+
+**Materialene lages i koden.** Spillet skal være én fil, så det finnes ingen
+bildefiler å laste. `render/Textures.js` tegner asfalt, gress, betong og curbs
+med lagvis støy på et lerret ved oppstart — farge, ruhet og normalkart fra det
+samme støyfeltet, med et gitter som wrapper slik at flisene møtes uten skjøt.
+Det koster rundt 126 ms én gang, og er forskjellen på asfalt som har korn og
+asfalt som er en flat grå flate.
+
+**Skyggene er kaskader.** Ett skyggekart måtte dekke alt på én gang: strakk det
+seg langt nok til at trærne framme i veien fikk skygge, ble hver teksel 15 cm —
+og bilen kastet i praksis ingen skygge i det hele tatt. Målt: å slå av bilens
+skyggekasting endret null piksler. Tre skyggekart deler nå synsfeltet etter
+dybde, med grensene satt i meter (14, 55, 260). Det nærmeste gir 1,5 cm per
+teksel, ti ganger skarpere enn før, og bilskyggen er målbart der.
+
+**Sola står 30 grader oppe, ikke rett opp.** Midt på dagen falt skyggen under
+bilen og landskapet ble flatt. Nå har alt lengde og form, og himmelen viser
+hvor lyset kommer fra: en skive med glød rundt.
+
+**Etterbehandlingen** var utsatt fra fase 3 fordi et tidligere forsøk vasket ut
+bildet. Årsaken var himmelen: den er en egen ShaderMaterial som skrev rå
+verdier uten tonemapping eller fargeromskonvertering. Direkte til skjermen så
+det nesten riktig ut, men gjennom kjeden ble de samme verdiene tolket som
+lineære og løftet hele bildet 12 %. Himmelen går nå gjennom de samme leddene
+som alle andre materialer, og en test måler at etterbehandlet og direkte
+rendret bilde er like på 1,5 av 255. Kjeden er `RenderPass` til et lineært
+flyttallsmål, uskarpheten regnet på lineære verdier, og `OutputPass` som gjør
+tonemapping og sRGB én gang til slutt.
+
+Fartsuskarpheten er radiell og bygger seg opp fra 90 km/t; midt i bildet, der
+du sikter, er den skarp. Under terskelen kobles hele kjeden ut og bildet tegnes
+rett til skjermen, så effekten koster ingenting når du står stille. På mobil er
+den av, og skyggene bruker to kaskader i stedet for tre.
+
 ## Status
 
 - [x] **Fase 0** — kartlegging av miljø og teknologivalg
@@ -162,11 +197,8 @@ noe du ser framfor å måtte lese. Under kartet står runde og meter av rundelen
       kamera med dynamisk synsvinkel, skjelv og helning inn i svingen
 - [x] **Fase 3** — 2775 m rundbane med curbs, rekkverk, høydeforskjeller,
       dosering, skog, fjell og terreng som binder seg til banen
-- [ ] **Fase 4** — grafikk: materialer, refleksjoner, etterbehandling.
-      Ekte fartsuskarphet hører hjemme her: et forsøk på radiell uskarphet
-      gjennom `EffectComposer` konverterte fargerommet to ganger og vasket ut
-      hele bildet, så pipelinen bygges skikkelig i denne fasen framfor å
-      etterlate en ødelagt effekt
+- [x] **Fase 4** — materialkart generert i koden, kaskadeskygger, sol på
+      himmelen og en etterbehandlingskjede med fartsuskarphet og vignett
 - [ ] **Fase 5** — lyd drevet av turtall, gir og belastning
 - [ ] **Fase 6** — kyst- og fjellbane
 - [ ] **Fase 7** — vær og døgnsyklus

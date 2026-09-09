@@ -8,6 +8,7 @@ import { CarModel } from './vehicle/CarModel.js';
 import { CockpitModel, COCKPIT_LAYER } from './vehicle/CockpitModel.js';
 import { ChaseCamera, CockpitCamera } from './camera/CameraRig.js';
 import { Mirrors } from './render/Mirrors.js';
+import { PostFx } from './render/PostFx.js';
 import { Circuit } from './world/Circuit.js';
 import { Hud } from './ui/Hud.js';
 import { MiniMap } from './ui/MiniMap.js';
@@ -26,7 +27,8 @@ function createRenderer(canvas, mobile) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // PCFSoft ble fjernet i three r186; PCF er det som faktisk kjører.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   return renderer;
@@ -40,7 +42,10 @@ async function boot() {
   status.textContent = 'BYGGER BANE';
 
   const mobile = hasTouch();
-  const world = new Circuit(physics, { shadowMapSize: mobile ? 1024 : 2048 });
+  const world = new Circuit(physics, {
+    shadowMapSize: mobile ? 1024 : 2048,
+    quality: mobile ? 0 : 1,
+  });
   const renderer = createRenderer(document.getElementById('scene'), mobile);
   world.createEnvironment(renderer);
 
@@ -53,7 +58,17 @@ async function boot() {
   model.group.add(cockpit.group);
   world.scene.add(model.group);
 
+  // Skyggene settes opp når alt som skal ta imot dem finnes i scenen.
+  world.enableCascadedShadows(camera, {
+    cascades: mobile ? 2 : 3,
+    shadowMapSize: mobile ? 1024 : 2048,
+  });
+
   const mirrors = new Mirrors(CAR, model.group, { scale: mobile ? 0.6 : 1, hz: mobile ? 20 : 30 });
+
+  // Fartsuskarphet koster en ekstra full skjermtegning, så den er av på mobil.
+  const postFx = new PostFx(renderer, world.scene, camera);
+  postFx.enabled = !mobile;
 
   const input = new VehicleInput(CAR);
   if (mobile) input.touch = new TouchControls();
@@ -76,6 +91,7 @@ async function boot() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight, false);
+    postFx.setSize(window.innerWidth, window.innerHeight);
   };
   window.addEventListener('resize', onResize);
   hudEl.classList.add('incar');
@@ -110,15 +126,18 @@ async function boot() {
       model.sync(vehicle);
       cockpit.update(dt, vehicle, input.steer);
       world.sync();
-      world.followSun(vehicle.position);
 
       const rig = cameras[cameraIndex];
       rig.update(dt, vehicle);
 
+      // Skyggene deler synsfeltet etter dybde, så de må vite hvor kameraet
+      // står — derfor etter at riggen har flyttet det.
+      world.followSun(vehicle.position);
+
       // Speilene tegnes før hovedbildet, med bilen allerede flyttet på plass.
       mirrors.update(dt, renderer, world.scene, vehicle);
 
-      renderer.render(world.scene, camera);
+      postFx.render(vehicle.telemetry.speed);
       hud.update(vehicle.telemetry, loop.fps);
       miniMap.update(dt, vehicle);
     },
@@ -127,6 +146,7 @@ async function boot() {
   // Første bilde tegnes før overlayet forsvinner, slik at man aldri ser en tom skjerm.
   model.sync(vehicle);
   cameras[0].update(FIXED_STEP, vehicle);
+  world.followSun(vehicle.position);
   mirrors.update(1, renderer, world.scene, vehicle);
   renderer.render(world.scene, camera);
 
@@ -136,7 +156,7 @@ async function boot() {
 
   if (import.meta.env.DEV) {
     window.__apex = {
-      physics, world, vehicle, model, cockpit, mirrors, miniMap,
+      physics, world, vehicle, model, cockpit, mirrors, miniMap, renderer, postFx,
       input, camera, cameras, loop, CAR,
       step: stepSimulation, fixedStep: FIXED_STEP,
       setCamera: (i) => { cameraIndex = i; cameras[i].reset(); hudEl.classList.toggle('incar', i === 0); },

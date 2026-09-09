@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { TrackPath } from './TrackPath.js';
 import { buildTrack, startPose, START_FRACTION } from './TrackBuilder.js';
 import { Terrain } from './Terrain.js';
@@ -10,14 +11,34 @@ import { Terrain } from './Terrain.js';
  * inkludert hvor bilen starter og hvor terrenget legger seg — utledes av den.
  */
 
+// Sola står 30 grader over horisonten, ikke rett opp. Midt på dagen faller
+// skyggen under bilen og landskapet blir flatt; på ettermiddagen får alt
+// lengde og form, og bilens egen skygge blir noe du faktisk ser.
+const SUN_OFFSET = new THREE.Vector3(150, 133, 175);
+const SUN_COLOUR = 0xfff3e0;
+const SUN_INTENSITY = 3.1;
+
+// Hvor dypt hvert skyggekart rekker, i meter fra kameraet.
+const SHADOW_SPLITS = [14, 55, 260];
+
+/**
+ * Himmelen er én kuppel med en gradient — og nå med sola i den.
+ *
+ * Lyset kommer fra en bestemt retning, og da må himmelen vise det: en skive
+ * der sola står, en varm glød rundt den som blør ut over halve himmelen, og en
+ * horisont som er lysere nærmest sola. Uten det ser en senket sol ut som en
+ * feil i lyssettingen framfor som ettermiddag.
+ */
 function skyMaterial() {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     uniforms: {
-      topColor: { value: new THREE.Color(0x2f6fb5) },
-      horizonColor: { value: new THREE.Color(0xd8e3ec) },
+      topColor: { value: new THREE.Color(0x2c66ab) },
+      horizonColor: { value: new THREE.Color(0xd6dfe8) },
       groundColor: { value: new THREE.Color(0x6d7482) },
+      sunColor: { value: new THREE.Color(0xffeccd) },
+      sunDirection: { value: SUN_OFFSET.clone().normalize() },
     },
     vertexShader: `
       varying vec3 vDir;
@@ -29,13 +50,31 @@ function skyMaterial() {
       uniform vec3 topColor;
       uniform vec3 horizonColor;
       uniform vec3 groundColor;
+      uniform vec3 sunColor;
+      uniform vec3 sunDirection;
       varying vec3 vDir;
       void main() {
         float h = vDir.y;
         vec3 col = h > 0.0
           ? mix(horizonColor, topColor, pow(h, 0.55))
           : mix(horizonColor, groundColor, pow(-h, 0.4));
+
+        // Glød rundt sola, og selve skiva med en myk kant.
+        float d = max(dot(normalize(vDir), normalize(sunDirection)), 0.0);
+        col = mix(col, sunColor, pow(d, 5.0) * 0.34);
+        col += sunColor * pow(d, 220.0) * 1.4;
+        col += sunColor * smoothstep(0.9995, 0.9998, d) * 2.2;
+
         gl_FragColor = vec4(col, 1.0);
+
+        // Himmelen må gjennom nøyaktig de samme leddene som alle andre
+        // materialer. Uten disse skrev den rå verdier rett i bufferet: det så
+        // nesten riktig ut på skjermen, men gikk bildet gjennom
+        // etterbehandlingen ble himmelen tolket som lineær og lyste opp hele
+        // bildet med 12 %. Chunkene gjør ingenting når three tegner til et
+        // mellommål, og alt til slutt — som det skal.
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`,
   });
 }
@@ -47,17 +86,19 @@ function skyDome(radius = 4000) {
 }
 
 export class Circuit {
-  constructor(physics, { shadowMapSize = 2048 } = {}) {
+  constructor(physics, { shadowMapSize = 2048, quality = 1 } = {}) {
     this.physics = physics;
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0xc4d2de, 500, 3400);
+    // Samme farge som horisonten: da smelter fjellene inn i himmelen
+    // i stedet for å ende i en grå kant.
+    this.scene.fog = new THREE.Fog(0xd6dfe8, 420, 3200);
     this.dynamics = [];
 
     this.path = new TrackPath(1400);
     this.scene.add(skyDome());
     this._lighting(shadowMapSize);
 
-    const track = buildTrack(this.path, physics);
+    const track = buildTrack(this.path, physics, { quality });
     this.scene.add(track.group);
     this.trackMaterials = track.materials;
 
@@ -79,13 +120,15 @@ export class Circuit {
   }
 
   _lighting(shadowMapSize) {
-    const sun = new THREE.DirectionalLight(0xfff3e0, 3.1);
-    sun.position.set(160, 220, 120);
+    // Sola står høyt og litt bak til venstre. Retningen brukes både av det
+    // enkle skyggekameraet og av kaskadene.
+    const sun = new THREE.DirectionalLight(SUN_COLOUR, SUN_INTENSITY);
+    sun.position.copy(SUN_OFFSET);
     sun.castShadow = true;
     sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
-    sun.shadow.camera.near = 20;
-    sun.shadow.camera.far = 700;
-    const s = 150;
+    sun.shadow.camera.near = 120;
+    sun.shadow.camera.far = 460;
+    const s = 65;
     sun.shadow.camera.left = -s;
     sun.shadow.camera.right = s;
     sun.shadow.camera.top = s;
@@ -96,6 +139,65 @@ export class Circuit {
     this.sun = sun;
 
     this.scene.add(new THREE.HemisphereLight(0xa8c8ea, 0x4a5238, 1.1));
+  }
+
+  /**
+   * Kaskadeskygger.
+   *
+   * Ett skyggekart måtte dekke alt du ser på én gang. Strakk det seg langt nok
+   * til at trærne framme i veien fikk skygge, ble hver teksel 7 cm og bilens
+   * egen skygge en grøt på 66 piksler. Strammet man det rundt bilen, kom
+   * skyggegrensa inn i synsfeltet og raste foran deg i 200 km/t.
+   *
+   * Kaskadene løser nettopp dette: tre skyggekart som deler synsfeltet etter
+   * dybde, tettest der bilen er. Nærmeste kaskade dekker under 20 meter og gir
+   * en skarp skygge under bilen; den fjerneste rekker 260 meter fram.
+   *
+   * Shaderen lar bare én kaskade lyse hver piksel, så sollyset blir ikke
+   * sterkere av at det er flere lamper — styrken er den samme som før.
+   */
+  enableCascadedShadows(camera, { cascades = 3, shadowMapSize = 2048 } = {}) {
+    this.sun.visible = false;
+    this.sun.castShadow = false;
+
+    this.csm = new CSM({
+      camera,
+      parent: this.scene,
+      cascades,
+      maxFar: 260,
+      // Standardoppdelingen ga nærmeste kaskade 44 meters dybde, og bilens egen
+      // skygge ble like grov som før. Grensene settes derfor i meter: det
+      // første kartet dekker bare bilen og asfalten rundt den.
+      mode: 'custom',
+      customSplitsCallback: (antall, near, far, breaks) => {
+        for (const d of SHADOW_SPLITS) breaks.push(Math.min(d, far) / far);
+        breaks[antall - 1] = 1;
+      },
+      shadowMapSize,
+      shadowBias: -0.0006,
+      lightIntensity: SUN_INTENSITY,
+      lightDirection: SUN_OFFSET.clone().negate().normalize(),
+      lightMargin: 260,
+    });
+    this.csm.fade = true;
+    for (const light of this.csm.lights) {
+      light.color.set(SUN_COLOUR);
+      light.shadow.normalBias = 0.03;
+    }
+
+    // Hvert materiale som skal ta imot skygge må få shaderen sin utvidet.
+    // Bare de fysisk baserte materialene belyses; himmelen og HUD-en ikke.
+    const seen = new Set();
+    this.scene.traverse((obj) => {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const m of mats) {
+        if (!m || seen.has(m) || !m.isMeshStandardMaterial) continue;
+        seen.add(m);
+        this.csm.setupMaterial(m);
+      }
+    });
+    this.shadowMaterials = seen.size;
+    return this.csm;
   }
 
   /**
@@ -128,9 +230,17 @@ export class Circuit {
     }
   }
 
-  /** Skyggekameraet følger bilen så skyggene holder seg skarpe. */
+  /**
+   * Skyggene følger det du ser. Med kaskader gjør de det av seg selv ut fra
+   * kameraet; uten dem flyttes det ene skyggekameraet etter bilen.
+   */
   followSun(target) {
-    this.sun.position.set(target.x + 160, target.y + 220, target.z + 120);
+    if (this.csm) {
+      this.csm.camera.updateMatrixWorld();
+      this.csm.update();
+      return;
+    }
+    this.sun.position.copy(SUN_OFFSET).add(target);
     this.sun.target.position.copy(target);
     this.sun.target.updateMatrixWorld();
   }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { asphaltMaps, grassMaps, concreteMaps, kerbMaps } from '../render/Textures.js';
 
 /**
  * Bygger asfalt, curbs, skulder og rekkverk ut fra senterlinjen.
@@ -83,17 +84,33 @@ function kerbStrength(path, index) {
   return THREE.MathUtils.clamp((KERB_RADIUS - f.radius) / (KERB_RADIUS * 0.45), 0, 1);
 }
 
-export function buildTrack(path, physics) {
+export function buildTrack(path, physics, { quality = 1 } = {}) {
   const RAPIER = physics.RAPIER;
   const group = new THREE.Group();
 
-  const asphalt = new THREE.MeshStandardMaterial({ color: 0x33363c, roughness: 0.94 });
+  // Teksturene tegnes i koden ved oppstart. På mobil halveres oppløsningen og
+  // anisotropien; kornet er der fortsatt, det koster bare mindre minne.
+  const detail = (full, low) => (quality >= 1 ? full : low);
+  const aniso = detail(8, 4);
+
+  // Fargen ligger i kartet, så materialet må ikke tone det ned: hvit basefarge.
+  const asphalt = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 1, metalness: 0,
+    ...asphaltMaps({ size: detail(512, 256), anisotropy: aniso }),
+  });
   const grass = new THREE.MeshStandardMaterial({
-    color: 0x445c31, roughness: 1,
+    color: 0xffffff, roughness: 1,
+    ...grassMaps({ size: detail(256, 128), anisotropy: detail(4, 2) }),
     polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3,
   });
-  const kerbMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
-  const barrierMat = new THREE.MeshStandardMaterial({ color: 0xc2c8cf, metalness: 0.45, roughness: 0.42 });
+  const kerbMat = new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.7,
+    ...kerbMaps({ size: detail(128, 64), anisotropy: detail(4, 2) }),
+  });
+  const barrierMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, metalness: 0.05, roughness: 0.7,
+    ...concreteMaps({ size: detail(256, 128), anisotropy: detail(4, 2) }),
+  });
   const paint = new THREE.MeshStandardMaterial({
     color: 0xe9ecef, roughness: 0.7,
     polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
