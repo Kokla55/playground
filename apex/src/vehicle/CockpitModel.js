@@ -96,6 +96,28 @@ class InstrumentCluster {
   }
 }
 
+/**
+ * En bjelke mellom to punkter, oppgitt i meter over bakken.
+ *
+ * A-stolpen følger frontrutas kant, og den kanten er verken loddrett eller
+ * rettvinklet. Å plassere en boks med rotasjon i grader ga en stolpe som var
+ * for kort, lente feil vei og stakk ti centimeter opp gjennom taket. Med to
+ * endepunkter kan den ikke havne andre steder enn der ruta faktisk er.
+ */
+function beam(from, to, thickness, depth, material) {
+  const a = new THREE.Vector3(...from);
+  const b = new THREE.Vector3(...to);
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(thickness, dir.length(), depth), material,
+  );
+  mesh.position.copy(a).addScaledVector(dir, 0.5);
+  mesh.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0), dir.clone().normalize(),
+  );
+  return mesh;
+}
+
 function box(w, h, d, material) {
   return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
 }
@@ -232,31 +254,47 @@ export class CockpitModel {
       base.position.set(x, y(0.56), -0.28);
       this.group.add(base);
 
-      const back = box(0.50, 0.74, 0.13, m.leather);
-      back.position.set(x, y(0.94), -0.58);
+      // Setet må holde seg under taket, som faller fra 1.36 til 1.25 bakover.
+      const back = box(0.50, 0.68, 0.13, m.leather);
+      back.position.set(x, y(0.89), -0.58);
       back.rotation.x = -0.16;
       this.group.add(back);
 
       for (const side of [1, -1]) {
-        const bolster = box(0.07, 0.64, 0.15, m.accent);
-        bolster.position.set(x + side * 0.215, y(0.92), -0.56);
+        const bolster = box(0.07, 0.58, 0.15, m.accent);
+        bolster.position.set(x + side * 0.215, y(0.87), -0.56);
         bolster.rotation.x = -0.16;
         this.group.add(bolster);
       }
 
-      const headrest = box(0.24, 0.20, 0.11, m.leather);
-      headrest.position.set(x, y(1.36), -0.66);
+      const headrest = box(0.24, 0.18, 0.11, m.leather);
+      headrest.position.set(x, y(1.12), -0.66);
       this.group.add(headrest);
     }
   }
 
   _addPillarsAndDoors(m, y) {
+    // Frontrutas kant, hentet fra karosseriets egne tverrsnitt: fra vindusfoten
+    // ved z 1.06 til takrammen ved z 0.36. Stolpen smalner innover samtidig som
+    // den lener seg bakover, slik en ekte A-stolpe gjør.
+    // Alt dette er innvendig panel og må ligge INNENFOR karosseriet. Lå det i
+    // selve takflaten, stakk det ut som mørke staver oppå taket sett utenfra.
+    // Rammen legges så høyt og så tynn som karosseriet tillater. Den koster
+    // utsikt: målt gikk kupeens dekning av skjermen fra 64 % uten ramme til
+    // 76 % med, og å heve og tynne den ga bare 74 % tilbake. Førerens øye er
+    // en halv meter fra rammen, og karosseriets tak ligger der det ligger —
+    // mer enn dette er ikke å hente uten å endre selve bilen. Men uten rammen
+    // sto stolpene som to løse pinner gjennom taket, og det var verre.
+    const FOT = 1.06, FOT_Y = 0.86, FOT_X = 0.84;
+    const RAMME = 0.46, RAMME_Y = 1.30, RAMME_X = 0.67;
+
     for (const x of [0.84, -0.84]) {
-      // A-stolpen lener seg bakover med frontruta og innover mot taket.
-      const pillar = box(0.065, 0.70, 0.085, m.dash);
-      pillar.position.set(x, y(1.16), 0.90);
-      pillar.rotation.set(-0.55, 0, Math.sign(x) * 0.16);
-      this.group.add(pillar);
+      const sign = Math.sign(x);
+      this.group.add(beam(
+        [sign * FOT_X, y(FOT_Y), FOT],
+        [sign * RAMME_X, y(RAMME_Y), RAMME],
+        0.062, 0.085, m.dash,
+      ));
 
       const door = box(0.06, 0.44, 1.15, m.leather);
       door.position.set(x + Math.sign(x) * 0.05, y(0.74), 0.05);
@@ -271,9 +309,23 @@ export class CockpitModel {
     floor.position.set(0, y(0.38), 0.05);
     this.group.add(floor);
 
-    const bulkhead = box(1.62, 0.72, 0.06, m.dash);
-    bulkhead.position.set(0, y(0.92), -0.88);
+    // Taket er nede i 1.14 m så langt bak, så skilleveggen må være lavere.
+    const bulkhead = box(1.62, 0.60, 0.06, m.dash);
+    bulkhead.position.set(0, y(0.83), -0.88);
     this.group.add(bulkhead);
+
+    // Takrammen over frontruta, og skinnene bakover langs taket. Uten dem sto
+    // A-stolpene som to løse pinner uten noe å feste seg i.
+    this.group.add(beam(
+      [-RAMME_X, y(RAMME_Y), RAMME], [RAMME_X, y(RAMME_Y), RAMME],
+      0.065, 0.075, m.dash,
+    ));
+    for (const x of [RAMME_X, -RAMME_X]) {
+      this.group.add(beam(
+        [x, y(RAMME_Y), RAMME], [x * 0.94, y(1.16), -0.62],
+        0.062, 0.075, m.dash,
+      ));
+    }
   }
 
   update(dt, vehicle, steerInput) {
