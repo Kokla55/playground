@@ -241,9 +241,17 @@ radien — men først ved 0,72 av den, der båndet så vidt holder. Første fors
 brukte 0,34 og krympet frisonen på Apex Ring også; det fanget regresjonstesten
 opp med at hjulene fant gress der de skulle funnet curbstein.
 
-**Brua var usynlig.** Terrenget stuper 34 m der brua står, men gressbåndet i
-veikanten la seg som et lokk over kløfta. På ei bru er det rekkverk og så luft,
-så skulderen går mot null der.
+**Brua var usynlig.** To ting stengte den. Gressbåndet i veikanten la seg som
+et lokk over kløfta, så skulderen går mot null på brua. Og rekkverket sto målt
+36 cm over førerens øye: man kjørte gjennom en betongrenne uten å se de
+trettifire meterne ned. Den tette muren stopper nå i brystningshøyde, 23 cm
+under øyet, med et gjennomsiktig rekkverk over — kollisjonskassene bak er
+uendret, så bilen stoppes like godt som før.
+
+Vannet ligger likevel 59 grader under blikket og kommer aldri inn i bildet når
+man ser framover. Det som forteller en fører at han er på ei bru, er det som
+står OVER dekket, så brua har tårn og skråstag. De sees lenge før man kommer
+dit, og de kan ikke forveksles med vei.
 
 Havet er én flate i havnivå. Kystlinja tegnes ikke — den oppstår der terrenget
 krysser flaten, og blir like ujevn som landskapet selv. Målt tverrsnitt fra

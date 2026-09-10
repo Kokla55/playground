@@ -44,6 +44,8 @@ const KERB_RADIUS = 250;   // curbs legges der svingen er trangere enn dette
 // En vegg som stopper en bil må rekke godt over taket på den.
 const BARRIER_HEIGHT = 2.10;
 const BARRIER_THICKNESS = 0.22;
+const PARAPET = 1.23;       // tett mur på brua: 0.95 m over veibanen
+const RAILING_TOP = 1.80;   // og rekkverk man ser gjennom opp hit
 
 /** Hvor på runden start- og målstreken ligger: et stykke ut på rettstrekket. */
 export const START_FRACTION = 0.06;
@@ -183,6 +185,7 @@ export function buildTrack(path, physics, { quality = 1 } = {}) {
   // --- rekkverk ---
   buildBarriers(path, physics, group, barrierMat);
   buildBridges(path, group, barrierMat, asphalt);
+  buildPylons(path, group);
   buildTunnels(path, group, barrierMat);
 
   // --- oppmerking ---
@@ -197,15 +200,19 @@ function buildBarriers(path, physics, group, material) {
 
   for (const sign of [-1, 1]) {
     const offset = (f) => sign * (f.halfWidth + shoulderAt(f));
-    const geo = ribbon(path,
-      offset, offset,
-      () => -0.28, () => -0.28 + BARRIER_HEIGHT,
-      { uvRepeat: 4 });
+    // På brua stopper den tette muren i brystningshøyde. Målt sto den ellers
+    // 36 cm over førerens øye, og da kjørte man gjennom en betongrenne uten å
+    // se de trettifire meterne ned til vannet. Over brystningen står et
+    // gjennomsiktig rekkverk — man ser ut, og fysikken er den samme.
+    const topp = (f) => -0.28 + THREE.MathUtils.lerp(BARRIER_HEIGHT, PARAPET, f.bridge ?? 0);
+    const geo = ribbon(path, offset, offset, () => -0.28, topp, { uvRepeat: 4 });
     geo.computeVertexNormals();
     const mesh = new THREE.Mesh(geo, material);
     mesh.material.side = THREE.DoubleSide;
     mesh.castShadow = true;
     group.add(mesh);
+
+    buildRailing(path, group, sign, offset);
 
     // Fysikken bruker kasser i stedet for båndet: en tynn vegg av trekanter er
     // lett å skyte gjennom i 300 km/t, mens kasser har volum å stoppe mot.
@@ -382,5 +389,117 @@ function buildTunnels(path, group, betong) {
     m.position.copy(f.position).addScaledVector(f.normal, HØYDE - 0.75);
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.tangent);
     group.add(m);
+  }
+}
+
+/**
+ * Rekkverket på brua: stolper og to horisontale drag.
+ *
+ * Det finnes bare der brua er, og bare over brystningen. Poenget er å se
+ * gjennom det — kollisjonskassene bak er uendret, så bilen stoppes like godt
+ * som før, men føreren får utsikten tilbake.
+ */
+function buildRailing(path, group, sign, offset) {
+  const n = path.samples;
+  if (!path.frames.some((f) => f.bridge > 0.5)) return;
+
+  const stål = new THREE.MeshStandardMaterial({
+    color: 0x8d97a3, metalness: 0.75, roughness: 0.42,
+  });
+
+  // Stolper hver drøye fire meter.
+  const stolpe = new THREE.BoxGeometry(0.075, RAILING_TOP - PARAPET + 0.28, 0.075);
+  const steg = Math.max(2, Math.round(4.2 / (path.length / n)));
+  for (let i = 0; i < n; i += steg) {
+    const f = path.frameAt(i);
+    if (f.bridge < 0.55) continue;
+    const m = new THREE.Mesh(stolpe, stål);
+    m.position.copy(f.position)
+      .addScaledVector(f.right, offset(f))
+      .addScaledVector(f.normal, (PARAPET + RAILING_TOP) / 2 - 0.28);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.tangent);
+    m.castShadow = true;
+    group.add(m);
+  }
+
+  // To drag som følger brua hele veien.
+  for (const høyde of [PARAPET + 0.22, RAILING_TOP - 0.06]) {
+    const geo = ribbon(path, offset, offset,
+      (f) => (f.bridge > 0.5 ? høyde - 0.34 : -100),
+      (f) => (f.bridge > 0.5 ? høyde - 0.28 : -100),
+      { uvRepeat: 4 });
+    geo.computeVertexNormals();
+    const drag = new THREE.Mesh(geo, stål);
+    drag.material.side = THREE.DoubleSide;
+    drag.castShadow = true;
+    group.add(drag);
+  }
+  void sign;
+}
+
+/**
+ * Tårn og bardun.
+ *
+ * Rekkverket gjør at man ser UT fra brua, men vannet ligger 59 grader under
+ * blikket og kommer aldri inn i bildet når man ser framover. Det som forteller
+ * en fører at han er på ei bru, er det som står OVER dekket. Derfor to tårn med
+ * kabler: de sees lenge før man kommer dit, og de kan ikke forveksles med vei.
+ */
+function buildPylons(path, group) {
+  const bro = path.frames.filter((f) => f.bridge > 0.5);
+  if (bro.length < 8) return;
+
+  const betong = new THREE.MeshStandardMaterial({
+    color: 0xb9c0c8, metalness: 0.08, roughness: 0.72,
+  });
+  const kabel = new THREE.MeshStandardMaterial({
+    color: 0x6f7883, metalness: 0.85, roughness: 0.35,
+  });
+
+  const HØYDE = 26;
+  const _v = new THREE.Vector3();
+
+  for (const andel of [0.28, 0.72]) {
+    const f = bro[Math.floor(bro.length * andel)];
+    const bredde = f.halfWidth + 1.6;
+
+    for (const sign of [-1, 1]) {
+      const fot = f.position.clone().addScaledVector(f.right, sign * bredde);
+
+      const tårn = new THREE.Mesh(new THREE.BoxGeometry(1.5, HØYDE, 1.9), betong);
+      tårn.position.copy(fot).addScaledVector(f.normal, HØYDE / 2 - 2.0);
+      tårn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.tangent);
+      tårn.castShadow = true;
+      group.add(tårn);
+
+      // Kablene vifter ut til dekket i begge retninger langs brua.
+      const topp = fot.clone().addScaledVector(f.normal, HØYDE - 2.0);
+      for (const langs of [-1, 1]) {
+        for (const d of [14, 30, 48, 68]) {
+          const i = path.frames.indexOf(f) + langs * Math.round(d / (path.length / path.samples));
+          const mål = path.frameAt(i);
+          if ((mål.bridge ?? 0) < 0.35) continue;
+          const feste = mål.position.clone()
+            .addScaledVector(mål.right, sign * bredde)
+            .addScaledVector(mål.normal, 0.9);
+
+          const lengde = _v.subVectors(feste, topp).length();
+          const wire = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.085, 0.085, lengde, 5), kabel,
+          );
+          wire.position.copy(topp).addScaledVector(_v.normalize(), lengde / 2);
+          wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _v);
+          wire.castShadow = true;
+          group.add(wire);
+        }
+      }
+    }
+
+    // Tverrbjelke som binder tårnene sammen over veien.
+    const bjelke = new THREE.Mesh(new THREE.BoxGeometry(bredde * 2, 1.4, 1.6), betong);
+    bjelke.position.copy(f.position).addScaledVector(f.normal, HØYDE - 4.5);
+    bjelke.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.tangent);
+    bjelke.castShadow = true;
+    group.add(bjelke);
   }
 }
