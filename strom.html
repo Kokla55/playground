@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="no">
 <head>
 <meta charset="utf-8">
@@ -108,7 +108,7 @@ const vals=()=>[1,2,3].map(i=>$("m"+i).value.trim());
 function text(){
   const v=vals();
   const lines=NAMES.map((n,i)=>`${n}: ${v[i]?v[i]+" kWh":"–"}`).join("\n");
-  return `Hei Asbjørn.\n${lines}\nMvh ${$("sign").value.trim()||"Philip"}`;
+  return `Hei Asbjørn, her er måleravlesningen for denne måneden:\n${lines}\nMvh ${$("sign").value.trim()||"Philip"}`;
 }
 function render(){
   const v=vals();
@@ -162,3 +162,5 @@ render();
 
 </body>
 </html>
+
+
